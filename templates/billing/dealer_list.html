@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Authorized Brand Dealers{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Authorized Brand Dealers & Showrooms</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Manage brand distributors and showrooms authorizing warranty repairs (WTY) and parts reimbursements</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="document.getElementById('add-dealer-modal').classList.remove('hidden')" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Add Authorized Dealer</span>
+            </button>
+            <a href="{% url 'billing:warranty_claims' %}" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl flex items-center gap-1.5">
+                <i data-lucide="shield-check" class="w-4 h-4 text-blue-600"></i>
+                <span>View WTY Claims</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Dealers Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {% for d in dealers %}
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm space-y-3">
+            <div class="flex items-start justify-between">
+                <div>
+                    <h3 class="font-bold text-slate-900 text-sm">{{ d.name }}</h3>
+                    <span class="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800">
+                        {{ d.brand.name|default:"Multi-Brand" }}
+                    </span>
+                </div>
+                <span class="text-xs px-2 py-0.5 rounded-full font-semibold {% if d.is_active %}bg-emerald-100 text-emerald-800{% else %}bg-slate-100 text-slate-600{% endif %}">
+                    {% if d.is_active %}Active{% else %}Inactive{% endif %}
+                </span>
+            </div>
+
+            <div class="text-xs text-slate-600 space-y-1 pt-1 border-t border-slate-100">
+                {% if d.contact_person %}
+                <div>Contact: <strong class="text-slate-800">{{ d.contact_person }}</strong></div>
+                {% endif %}
+                {% if d.phone %}
+                <div>Phone: <strong class="text-slate-800 font-mono">{{ d.phone }}</strong></div>
+                {% endif %}
+                <div>Address: <span class="text-slate-700">{{ d.address|default:"Damak, Jhapa" }}</span></div>
+            </div>
+
+            <div class="bg-slate-50 p-2.5 rounded-xl text-xs flex justify-between items-center font-mono">
+                <div>
+                    <div class="text-[10px] text-slate-400 uppercase">Pending Claims</div>
+                    <div class="font-bold text-amber-700">{{ d.pending_claims_count }} jobs</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-[10px] text-slate-400 uppercase">Total Value</div>
+                    <div class="font-bold text-slate-800">{{ workshop.currency_symbol|default:"Rs." }} {{ d.total_claim_amount|intcomma }}</div>
+                </div>
+            </div>
+
+            <div class="pt-2 flex items-center gap-2">
+                <a href="{% url 'billing:warranty_claims' %}?dealer={{ d.id }}" class="flex-1 py-1.5 px-2 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-xs font-semibold text-center border border-purple-200 transition-colors">
+                    View Claims ({{ d.pending_claims_count }})
+                </a>
+                <a href="{% url 'services:job_create' %}?warranty_dealer={{ d.id }}" class="py-1.5 px-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold text-center shadow-sm transition-colors" title="Dispatch new warranty job for this dealer">
+                    + New WTY Job
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-12 bg-white rounded-2xl border border-slate-200 p-8 text-slate-400">
+            <i data-lucide="store" class="w-10 h-10 mx-auto text-slate-300 mb-2"></i>
+            <div class="text-sm font-semibold text-slate-700">No Authorized Dealers Added Yet</div>
+            <div class="text-xs text-slate-400 mt-1">Register local brand showrooms (e.g. LG Damak, Samsung Plaza) to track warranty reimbursements.</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Add Dealer Modal -->
+<div id="add-dealer-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 class="text-base font-bold text-slate-900">Add Authorized Brand Dealer</h3>
+            <button onclick="document.getElementById('add-dealer-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+        </div>
+
+        <form method="POST" class="space-y-3">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Dealer / Showroom Name *</label>
+                <input type="text" name="name" required placeholder="e.g. LG Authorized Showroom - Damak" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Brand Associated</label>
+                <select name="brand" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+                    <option value="">-- Multi-Brand / General Distributor --</option>
+                    {% for b in brands %}
+                    <option value="{{ b.id }}">{{ b.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Contact Person</label>
+                    <input type="text" name="contact_person" placeholder="e.g. Branch Manager" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 mb-1">Phone Number</label>
+                    <input type="text" name="phone" placeholder="e.g. 9852600000" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white font-mono">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Address / Location</label>
+                <input type="text" name="address" value="Damak, Jhapa" placeholder="e.g. Kirat Chowk, Damak-05" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white">
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="document.getElementById('add-dealer-modal').classList.add('hidden')" class="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg">Cancel</button>
+                <button type="submit" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg shadow-sm">Save Dealer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

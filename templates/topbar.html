@@ -1,0 +1,48 @@
+<header class="h-16 bg-white border-b border-slate-200/80 px-6 flex items-center justify-between shrink-0 z-20">
+    <!-- Search Form -->
+    <div class="flex-1 max-w-lg">
+        <form action="{% url 'core:search' %}" method="GET" class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                <i data-lucide="search" class="w-4 h-4"></i>
+            </span>
+            <input 
+                type="text" 
+                name="q" 
+                value="{{ request.GET.q|default:'' }}"
+                placeholder="{% if request.user.staff_profile.is_technician %}Search my assigned jobs, parts availability...{% else %}Search phone (e.g. 9841...), Job ID (JOB-00482), customer, part, invoice...{% endif %}" 
+                class="w-full pl-9 pr-4 py-2 bg-slate-50 hover:bg-slate-100/80 focus:bg-white text-xs sm:text-sm text-slate-800 placeholder-slate-400 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-all"
+            >
+        </form>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="flex items-center gap-3 ml-4">
+        <!-- Low Stock Pill if any -->
+        {% if low_stock_count > 0 %}
+        <a href="{% url 'inventory:inventory_list' %}?low_stock=1" class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-rose-50 border border-rose-200 text-rose-700 hover:bg-rose-100 transition-colors">
+            <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-rose-600"></i>
+            <span>{{ low_stock_count }} Low Stock Item{{ low_stock_count|pluralize }}</span>
+        </a>
+        {% endif %}
+
+        {% if not request.user.staff_profile.is_technician %}
+        <!-- Active Jobs Pill (Admin) -->
+        <a href="{% url 'services:job_list' %}?status=IN_PROGRESS" class="hidden md:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 border border-blue-200 text-blue-800 hover:bg-blue-100 transition-colors">
+            <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+            <span>{{ active_jobs_count|default:"0" }} Active Job{{ active_jobs_count|pluralize }}</span>
+        </a>
+
+        <!-- Quick Create Job Button (Admin Only) -->
+        <a href="{% url 'services:job_create' %}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>New Service Job</span>
+        </a>
+        {% else %}
+        <!-- Technician Quick Field Hub Link -->
+        <a href="{% url 'services:technician_view' %}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/30 transition-all">
+            <i data-lucide="wrench" class="w-4 h-4"></i>
+            <span>My Field Tasks</span>
+        </a>
+        {% endif %}
+    </div>
+</header>

@@ -1,0 +1,196 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load nepali_tags %}
+
+{% block title %}Dealer Warranty Claims (WTY){% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <div class="inline-flex items-center gap-2 mb-1">
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-900 border border-blue-200">
+                    कम्पनी वारेन्टी (WTY Claims)
+                </span>
+            </div>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Dealer Warranty Claims Hub (WTY)</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Track warranty repairs authorized by brand dealers, reimbursement submissions, and claim settlement payouts</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{% url 'billing:dealer_list' %}" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm flex items-center gap-1.5">
+                <i data-lucide="store" class="w-4 h-4 text-purple-600"></i>
+                <span>Manage Dealers</span>
+            </a>
+            <a href="{% url 'billing:credit_ledger' %}" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm flex items-center gap-1.5">
+                <i data-lucide="credit-card" class="w-4 h-4 text-amber-600"></i>
+                <span>Due / Udharo Khata</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Metrics -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-blue-200 shadow-sm bg-gradient-to-br from-white to-blue-50/40">
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Total Warranty Value</span>
+            <div class="mt-2 text-3xl font-extrabold text-blue-800 font-mono">
+                {{ workshop.currency_symbol|default:"Rs." }} {{ total_claim_amount|intcomma }}
+            </div>
+            <p class="text-xs text-blue-900 mt-1">{{ claims.count }} total brand warranty jobs</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm bg-gradient-to-br from-white to-amber-50/40">
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-700">Pending Dealer Payout</span>
+            <div class="mt-2 text-3xl font-bold text-amber-700 font-mono">
+                {{ workshop.currency_symbol|default:"Rs." }} {{ pending_claim_amount|intcomma }}
+            </div>
+            <p class="text-xs text-amber-900 mt-1">Awaiting dealer reimbursement</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm bg-gradient-to-br from-white to-emerald-50/40">
+            <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Settled by Dealers</span>
+            <div class="mt-2 text-3xl font-bold text-emerald-700 font-mono">
+                {{ workshop.currency_symbol|default:"Rs." }} {{ settled_claim_amount|intcomma }}
+            </div>
+            <p class="text-xs text-emerald-900 mt-1">Successfully reimbursed</p>
+        </div>
+    </div>
+
+    <!-- Filter & Search Bar -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+        <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <div class="md:col-span-2">
+                <input 
+                    type="text" 
+                    name="search" 
+                    value="{{ search }}" 
+                    placeholder="Search by dealer, customer, job ID, or voucher..." 
+                    class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 text-slate-800"
+                >
+            </div>
+
+            <div>
+                <select name="dealer" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl">
+                    <option value="">All Brand Dealers</option>
+                    {% for d in dealers %}
+                    <option value="{{ d.id }}" {% if selected_dealer == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="flex gap-2">
+                <select name="status" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl">
+                    <option value="">All Claim Statuses</option>
+                    <option value="PENDING" {% if selected_status == 'PENDING' %}selected{% endif %}>Pending Submission</option>
+                    <option value="SUBMITTED" {% if selected_status == 'SUBMITTED' %}selected{% endif %}>Submitted to Dealer</option>
+                    <option value="SETTLED" {% if selected_status == 'SETTLED' %}selected{% endif %}>Settled / Reimbursed</option>
+                </select>
+                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm">
+                    Filter
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Warranty Claims Table -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <tr>
+                        <th class="px-4 py-3">Voucher & Job ID</th>
+                        <th class="px-4 py-3">Brand & Dealer (Who Pays)</th>
+                        <th class="px-4 py-3">Customer & Appliance</th>
+                        <th class="px-4 py-3">Date (AD & BS)</th>
+                        <th class="px-4 py-3 text-right">Claim Amount</th>
+                        <th class="px-4 py-3 text-center">Claim Status</th>
+                        <th class="px-4 py-3 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for claim in claims %}
+                    <tr class="hover:bg-blue-50/20 transition-colors">
+                        <td class="px-4 py-3.5">
+                            <a href="{% url 'billing:invoice_detail' claim.id %}" class="font-bold text-blue-700 hover:underline">
+                                {{ claim.invoice_number }}
+                            </a>
+                            <div class="text-xs text-slate-400 font-mono">{{ claim.job.job_number }}</div>
+                        </td>
+
+                        <td class="px-4 py-3.5 text-xs">
+                            {% if claim.dealer %}
+                            <div class="font-bold text-slate-900">{{ claim.dealer.name }}</div>
+                            <div class="text-slate-500 text-[11px]">{{ claim.dealer.address }} • {{ claim.dealer.phone|default:"No phone" }}</div>
+                            {% else %}
+                            <span class="text-slate-500 font-semibold">{{ claim.ac_brand }} Authorized Dealer</span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-4 py-3.5 text-xs">
+                            <div class="font-semibold text-slate-800">{{ claim.customer.name }}</div>
+                            <div class="text-slate-500 text-[11px]">
+                                {{ claim.job.get_appliance_type_display }} • {{ claim.job.get_job_type_display }}
+                            </div>
+                        </td>
+
+                        <td class="px-4 py-3.5 text-xs text-slate-600">
+                            <div>{{ claim.created_at|date:"d M Y" }}</div>
+                            <div class="text-[11px] text-blue-700 font-medium">{{ claim.created_at|bs_date }}</div>
+                        </td>
+
+                        <td class="px-4 py-3.5 text-right font-mono font-bold text-sm text-slate-900">
+                            {{ workshop.currency_symbol|default:"Rs." }} {{ claim.dealer_claim_amount|intcomma }}
+                        </td>
+
+                        <td class="px-4 py-3.5 text-center">
+                            {% if claim.dealer_claim_status == 'SETTLED' %}
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                Settled / Paid
+                            </span>
+                            {% elif claim.dealer_claim_status == 'SUBMITTED' %}
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                Submitted to Dealer
+                            </span>
+                            {% else %}
+                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                Pending Submission
+                            </span>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-4 py-3.5 text-right">
+                            <form method="POST" action="{% url 'billing:warranty_claim_update_status' claim.id %}" class="inline-flex items-center gap-1.5">
+                                {% csrf_token %}
+                                {% if claim.dealer_claim_status == 'PENDING' %}
+                                <input type="hidden" name="dealer_claim_status" value="SUBMITTED">
+                                <button type="submit" class="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg shadow-sm">
+                                    Mark Submitted
+                                </button>
+                                {% elif claim.dealer_claim_status == 'SUBMITTED' %}
+                                <input type="hidden" name="dealer_claim_status" value="SETTLED">
+                                <button type="submit" class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold rounded-lg shadow-sm">
+                                    Mark Settled
+                                </button>
+                                {% else %}
+                                <span class="text-xs text-emerald-600 font-bold inline-flex items-center gap-1">
+                                    <i data-lucide="check" class="w-3.5 h-3.5"></i> Reimbursed
+                                </span>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-12 text-slate-400">
+                            <i data-lucide="shield" class="w-8 h-8 mx-auto text-slate-300 mb-2"></i>
+                            <div class="text-sm font-semibold text-slate-700">No Warranty Claims Found</div>
+                            <div class="text-xs text-slate-400 mt-1">Jobs marked as Company Warranty (WTY) will appear here for dealer reimbursement tracking.</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

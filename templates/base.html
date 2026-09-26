@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Multi-Brand AC Workshop Portal{% endblock %} - Chitwan AC Service</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        },
+                        charcoal: {
+                            800: '#1e293b',
+                            900: '#0f172a',
+                        }
+                    },
+                    borderRadius: {
+                        'xl': '0.75rem',
+                        '2xl': '1rem',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom clean typography and scrollbar */
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            color: #1e293b;
+        }
+        .sidebar-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb {
+            background-color: #cbd5e1;
+            border-radius: 4px;
+        }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="h-full flex overflow-hidden text-slate-800 antialiased selection:bg-blue-100 selection:text-blue-900">
+
+    {% if user.is_authenticated %}
+    <!-- Fixed Left Sidebar -->
+    {% include 'sidebar.html' %}
+    {% endif %}
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
+        {% if user.is_authenticated %}
+        <!-- Top Navigation Bar -->
+        {% include 'topbar.html' %}
+        {% endif %}
+
+        <!-- Flash Messages -->
+        {% if messages %}
+        <div class="px-6 pt-4 shrink-0">
+            {% for message in messages %}
+            <div class="flex items-center justify-between p-3.5 mb-2 rounded-xl text-sm font-medium border {% if message.tags == 'error' %}bg-rose-50 border-rose-200 text-rose-800{% elif message.tags == 'warning' %}bg-amber-50 border-amber-200 text-amber-800{% elif message.tags == 'info' %}bg-blue-50 border-blue-200 text-blue-800{% else %}bg-emerald-50 border-emerald-200 text-emerald-800{% endif %}">
+                <div class="flex items-center gap-2.5">
+                    {% if message.tags == 'error' %}
+                    <i data-lucide="alert-circle" class="w-4 h-4 text-rose-600"></i>
+                    {% elif message.tags == 'warning' %}
+                    <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-600"></i>
+                    {% else %}
+                    <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+                    {% endif %}
+                    <span>{{ message }}</span>
+                </div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- Page Dynamic Body -->
+        <main class="flex-1 overflow-y-auto px-4 sm:px-6 lg:px-8 py-6">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- Initialize Lucide Icons -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            lucide.createIcons();
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,202 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ brand.name }} - Brand Detail & Spares{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <a href="{% url 'inventory:brand_list' %}" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                </a>
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">{{ brand.name }}</h1>
+                <span class="px-2.5 py-0.5 rounded-full text-xs font-bold {% if brand.is_common %}bg-slate-100 text-slate-800{% else %}bg-blue-50 text-blue-800{% endif %}">
+                    {% if brand.is_common %}Universal Parts{% else %}Brand Specific{% endif %}
+                </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">{{ brand.description }}</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="{% url 'inventory:inventory_create' %}?brand={{ brand.id }}" class="px-3.5 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Add {{ brand.name }} Part</span>
+            </a>
+            <a href="{% url 'services:job_create' %}?brand={{ brand.id }}" class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5">
+                <i data-lucide="wrench" class="w-4 h-4"></i>
+                <span>Book {{ brand.name }} Job</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Metrics -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Inventory Items</span>
+            <div class="mt-2 text-2xl font-bold text-slate-900">{{ inventory_items.count }}</div>
+            <p class="text-xs text-slate-500 mt-1">spares catalogued for {{ brand.name }}</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Service Jobs</span>
+            <div class="mt-2 text-2xl font-bold text-blue-700">{{ total_jobs_count }}</div>
+            <p class="text-xs text-slate-500 mt-1">all-time repair and maintenance</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Brand Code</span>
+            <div class="mt-2 text-xl font-bold text-slate-800 font-mono">{{ brand.code|default:"-" }}</div>
+            <p class="text-xs text-slate-500 mt-1">standard internal identifier</p>
+        </div>
+    </div>
+
+    <!-- 1. INVENTORY SPARES FOR THIS BRAND -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+        <h2 class="text-base font-bold text-slate-900">{{ brand.name }} Spare Parts Inventory</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-3.5 py-2.5">Part Name</th>
+                        <th class="px-3.5 py-2.5">Part Code</th>
+                        <th class="px-3.5 py-2.5 text-center">Current Stock</th>
+                        <th class="px-3.5 py-2.5 text-center">Min Stock</th>
+                        <th class="px-3.5 py-2.5 text-right">Selling Price</th>
+                        <th class="px-3.5 py-2.5 text-center">Status</th>
+                        <th class="px-3.5 py-2.5 text-right">Action</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for item in inventory_items %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-3.5 py-2.5 font-bold text-slate-900">
+                            {{ item.part_name }}
+                        </td>
+                        <td class="px-3.5 py-2.5 font-mono text-slate-500">
+                            {{ item.part_code|default:"-" }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-center font-bold text-slate-800">
+                            {{ item.stock_display }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-center text-slate-500">
+                            {{ item.min_stock_display }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-right font-bold text-slate-900 font-mono">
+                            {{ workshop.currency_symbol|default:"Rs." }} {{ item.selling_price|intcomma }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-center">
+                            {% if item.is_low_stock %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">Low Stock</span>
+                            {% else %}
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800">OK</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-right">
+                            <a href="{% url 'inventory:inventory_detail' item.id %}" class="text-blue-600 hover:underline font-semibold">
+                                View
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-3.5 py-6 text-center text-slate-400">
+                            No parts catalogued specifically under {{ brand.name }} yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 2. SERVICE JOBS FOR THIS BRAND -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+        <h2 class="text-base font-bold text-slate-900">Recent {{ brand.name }} Service Jobs</h2>
+        <div class="divide-y divide-slate-100 text-xs">
+            {% for j in jobs %}
+            <div class="py-3 flex items-center justify-between hover:bg-slate-50 p-2 rounded-xl transition-colors">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <a href="{% url 'services:job_detail' j.id %}" class="font-bold text-sm text-blue-700 hover:underline">
+                            {{ j.job_number }}
+                        </a>
+                        <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-slate-100 text-slate-800">{{ j.get_status_display }}</span>
+                    </div>
+                    <div class="text-slate-700 font-semibold mt-1">
+                        {{ j.customer.name }} ({{ j.customer.phone }}) • {{ j.service_type }}
+                    </div>
+                    <div class="text-slate-500 italic mt-0.5">"{{ j.complaint|truncatewords:8 }}"</div>
+                </div>
+                <div class="text-right">
+                    <div class="font-bold text-slate-900 text-sm">{{ workshop.currency_symbol|default:"Rs." }} {{ j.total_amount|intcomma }}</div>
+                    <div class="text-slate-400 text-[11px]">{{ j.created_at|date:"M d, Y" }}</div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="py-6 text-center text-slate-400">No jobs registered for {{ brand.name }} yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- 3. SPARE PARTS CONSUMED ON JOBS -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-900">{{ brand.name }} Parts Consumed in Workshop Jobs</h2>
+            <span class="text-xs text-slate-400">Direct stock deduction tracking</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-3.5 py-2.5">Spare Part</th>
+                        <th class="px-3.5 py-2.5">Job Ref</th>
+                        <th class="px-3.5 py-2.5">Customer</th>
+                        <th class="px-3.5 py-2.5 text-center">Qty Used</th>
+                        <th class="px-3.5 py-2.5 text-right">Unit Price</th>
+                        <th class="px-3.5 py-2.5 text-right">Total</th>
+                        <th class="px-3.5 py-2.5 text-right">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for p in parts_consumed %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-3.5 py-2.5 font-bold text-slate-900">
+                            {{ p.inventory_item.part_name }}
+                        </td>
+                        <td class="px-3.5 py-2.5">
+                            <a href="{% url 'services:job_detail' p.job.id %}" class="font-bold text-blue-600 hover:underline">
+                                {{ p.job.job_number }}
+                            </a>
+                        </td>
+                        <td class="px-3.5 py-2.5 text-slate-700">
+                            {{ p.job.customer.name }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-center font-bold text-slate-800">
+                            {{ p.quantity }} {{ p.inventory_item.unit }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-right font-mono">
+                            {{ workshop.currency_symbol|default:"Rs." }} {{ p.unit_price|intcomma }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-right font-bold text-slate-900 font-mono">
+                            {{ workshop.currency_symbol|default:"Rs." }} {{ p.subtotal|intcomma }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-right text-slate-400">
+                            {{ p.added_at|date:"M d, Y" }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-3.5 py-6 text-center text-slate-400">
+                            No parts for {{ brand.name }} have been recorded as consumed in service jobs yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

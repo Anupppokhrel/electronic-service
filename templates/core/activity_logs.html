@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Operational Activity Log{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Workshop Activity Log</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Chronological record of jobs, parts deducted, payments and staff actions</p>
+        </div>
+        <a href="{% url 'core:dashboard' %}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+            <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+            <span>Dashboard</span>
+        </a>
+    </div>
+
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="divide-y divide-slate-100">
+            {% for log in logs %}
+            <div class="p-4 flex items-start gap-3.5 hover:bg-slate-50/70 transition-colors">
+                <div class="p-2 rounded-xl mt-0.5 shrink-0 
+                    {% if log.action_type == 'JOB_UPDATE' %}bg-blue-50 text-blue-600
+                    {% elif log.action_type == 'STOCK_UPDATE' %}bg-amber-50 text-amber-600
+                    {% elif log.action_type == 'PAYMENT' %}bg-emerald-50 text-emerald-600
+                    {% elif log.action_type == 'STAFF' %}bg-purple-50 text-purple-600
+                    {% else %}bg-slate-100 text-slate-600{% endif %}">
+                    {% if log.action_type == 'JOB_UPDATE' %}<i data-lucide="wrench" class="w-4 h-4"></i>
+                    {% elif log.action_type == 'STOCK_UPDATE' %}<i data-lucide="box" class="w-4 h-4"></i>
+                    {% elif log.action_type == 'PAYMENT' %}<i data-lucide="banknote" class="w-4 h-4"></i>
+                    {% elif log.action_type == 'STAFF' %}<i data-lucide="user" class="w-4 h-4"></i>
+                    {% else %}<i data-lucide="activity" class="w-4 h-4"></i>{% endif %}
+                </div>
+
+                <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                        <span class="text-sm font-bold text-slate-900">{{ log.action }}</span>
+                        <span class="text-xs text-slate-400 shrink-0">{{ log.created_at|date:"M d, Y • h:i A" }}</span>
+                    </div>
+
+                    <div class="text-xs text-slate-500 mt-0.5 flex items-center gap-3">
+                        <span>Staff: <strong class="text-slate-700">{{ log.user.get_full_name|default:"System" }}</strong></span>
+                        {% if log.job_reference %}
+                        <span>•</span>
+                        <span>Job: <strong class="text-blue-700">{{ log.job_reference }}</strong></span>
+                        {% endif %}
+                    </div>
+
+                    {% if log.details %}
+                    <p class="text-xs text-slate-600 mt-1 italic bg-slate-50 p-2 rounded-lg border border-slate-100">{{ log.details }}</p>
+                    {% endif %}
+                </div>
+            </div>
+            {% empty %}
+            <div class="p-12 text-center text-slate-400 text-sm">No activity recorded yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

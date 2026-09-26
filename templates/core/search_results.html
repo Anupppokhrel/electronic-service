@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Search Results for "{{ query }}"{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-6xl mx-auto">
+    <!-- Search Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Search Results</h1>
+            <p class="text-xs text-slate-500 mt-1">Found {{ total_results }} result{{ total_results|pluralize }} matching query: <strong class="text-blue-700">"{{ query }}"</strong></p>
+        </div>
+        <a href="{% url 'core:dashboard' %}" class="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center gap-1">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span>Back to Dashboard</span>
+        </a>
+    </div>
+
+    <!-- 1. Customers Found -->
+    {% if customers %}
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+            <i data-lucide="users" class="w-4 h-4 text-blue-600"></i>
+            <span>Customers ({{ customers|length }})</span>
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for c in customers %}
+            <a href="{% url 'customers:customer_detail' c.id %}" class="p-3.5 rounded-xl border border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-blue-50/30 transition-all block">
+                <div class="font-bold text-sm text-slate-900">{{ c.name }}</div>
+                <div class="text-xs font-semibold text-blue-700 mt-0.5">📞 {{ c.phone }}</div>
+                <div class="text-xs text-slate-500 mt-1 truncate">📍 {{ c.address }}</div>
+                <div class="text-[11px] text-slate-400 mt-2">Total Service Jobs: {{ c.total_jobs }}</div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 2. Jobs Found -->
+    {% if jobs %}
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+            <i data-lucide="wrench" class="w-4 h-4 text-blue-600"></i>
+            <span>Service Jobs ({{ jobs|length }})</span>
+        </h2>
+        <div class="divide-y divide-slate-100">
+            {% for j in jobs %}
+            <div class="py-3 flex items-center justify-between hover:bg-slate-50 p-2 rounded-xl transition-colors">
+                <div>
+                    <div class="flex items-center gap-2">
+                        <a href="{% url 'services:job_detail' j.id %}" class="font-bold text-sm text-blue-700 hover:underline">
+                            {{ j.job_number }}
+                        </a>
+                        <span class="px-2 py-0.5 text-[11px] font-bold rounded-full bg-slate-100 text-slate-800">{{ j.get_status_display }}</span>
+                    </div>
+                    <div class="text-xs text-slate-700 font-semibold mt-1">
+                        {{ j.customer.name }} ({{ j.customer.phone }}) • {{ j.ac_brand_name }} ({{ j.ac_type_name }})
+                    </div>
+                    <div class="text-xs text-slate-500 italic mt-0.5">"{{ j.complaint|truncatewords:10 }}"</div>
+                </div>
+                <div class="text-right">
+                    <span class="text-sm font-bold text-slate-900">{{ workshop.currency_symbol|default:"Rs." }} {{ j.total_amount|intcomma }}</span>
+                    <div class="text-xs text-slate-400">{{ j.created_at|date:"M d, Y" }}</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 3. Invoices Found -->
+    {% if invoices %}
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+            <i data-lucide="receipt" class="w-4 h-4 text-blue-600"></i>
+            <span>Internal Invoices ({{ invoices|length }})</span>
+        </h2>
+        <div class="divide-y divide-slate-100">
+            {% for inv in invoices %}
+            <div class="py-3 flex items-center justify-between hover:bg-slate-50 p-2 rounded-xl transition-colors">
+                <div>
+                    <a href="{% url 'billing:invoice_detail' inv.id %}" class="font-bold text-sm text-blue-700 hover:underline">
+                        {{ inv.invoice_number }}
+                    </a>
+                    <span class="text-xs text-slate-500 ml-2">Job: {{ inv.job.job_number }}</span>
+                    <div class="text-xs text-slate-700 font-medium mt-1">{{ inv.customer.name }} • {{ inv.ac_brand }}</div>
+                </div>
+                <div class="text-right">
+                    <div class="font-bold text-sm text-slate-900">{{ workshop.currency_symbol|default:"Rs." }} {{ inv.total_amount|intcomma }}</div>
+                    <span class="px-2 py-0.5 text-[10px] font-bold rounded-full {% if inv.payment_status == 'PAID' %}bg-emerald-100 text-emerald-800{% else %}bg-amber-100 text-amber-800{% endif %}">
+                        {{ inv.get_payment_status_display }}
+                    </span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 4. Inventory Items Found -->
+    {% if inventory_items %}
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+            <i data-lucide="boxes" class="w-4 h-4 text-blue-600"></i>
+            <span>Inventory Parts ({{ inventory_items|length }})</span>
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for itm in inventory_items %}
+            <a href="{% url 'inventory:inventory_detail' itm.id %}" class="p-3.5 rounded-xl border border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-blue-50/30 transition-all block">
+                <div class="font-bold text-sm text-slate-900">{{ itm.part_name }}</div>
+                <div class="text-xs text-slate-500">Code: {{ itm.part_code|default:"-" }} • Brand: {{ itm.brand.name|default:"Common" }}</div>
+                <div class="mt-2 flex items-center justify-between text-xs">
+                    <span class="font-bold text-slate-800">Stock: {{ itm.stock_display }}</span>
+                    <span class="font-bold text-blue-700">{{ workshop.currency_symbol|default:"Rs." }} {{ itm.selling_price|intcomma }}</span>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 5. Staff Found -->
+    {% if staff_members %}
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+            <i data-lucide="user-check" class="w-4 h-4 text-blue-600"></i>
+            <span>Staff Members ({{ staff_members|length }})</span>
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {% for s in staff_members %}
+            <a href="{% url 'accounts:staff_detail' s.id %}" class="p-3.5 rounded-xl border border-slate-200 hover:border-blue-400 bg-slate-50/50 hover:bg-blue-50/30 transition-all block">
+                <div class="font-bold text-sm text-slate-900">{{ s.user.get_full_name }}</div>
+                <div class="text-xs text-slate-500">{{ s.get_role_display }} • Phone: {{ s.phone }}</div>
+                <div class="text-xs text-blue-700 mt-1 font-semibold">Status: {{ s.get_status_display }}</div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    {% if total_results == 0 %}
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-12 text-center">
+        <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+            <i data-lucide="search-x" class="w-6 h-6"></i>
+        </div>
+        <h3 class="text-base font-bold text-slate-800">No records found</h3>
+        <p class="text-xs text-slate-500 mt-1">No matching customers, jobs, invoices or parts for "{{ query }}".</p>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

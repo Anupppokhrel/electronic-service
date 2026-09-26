@@ -1,0 +1,265 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}Operational & Financial Reports{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Top Bar & Export Buttons -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Workshop Reports & Analytics</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Financial turnover, technician throughput, parts usage and stock metrics</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+            <a href="{% url 'reports:export_csv' %}?range={{ filter_type }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-sm transition-colors">
+                <i data-lucide="download" class="w-3.5 h-3.5 text-blue-600"></i>
+                <span>Export CSV</span>
+            </a>
+            <a href="{% url 'reports:export_excel' %}?range={{ filter_type }}&start_date={{ start_date|date:'Y-m-d' }}&end_date={{ end_date|date:'Y-m-d' }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm shadow-emerald-600/30 transition-all">
+                <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5"></i>
+                <span>Export Excel (.xlsx)</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Date Range Filter Bar -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
+        <form method="GET" class="flex flex-col md:flex-row md:items-center justify-between gap-4 text-xs">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="font-bold text-slate-600 uppercase tracking-wider text-[11px]">Period:</span>
+                <a href="?range=today" class="px-3 py-1.5 rounded-xl font-semibold transition-colors {% if filter_type == 'today' %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                    Today
+                </a>
+                <a href="?range=week" class="px-3 py-1.5 rounded-xl font-semibold transition-colors {% if filter_type == 'week' %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                    This Week
+                </a>
+                <a href="?range=month" class="px-3 py-1.5 rounded-xl font-semibold transition-colors {% if filter_type == 'month' or not filter_type %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-700 hover:bg-slate-200{% endif %}">
+                    This Month (September 2026)
+                </a>
+            </div>
+
+            <!-- Custom date range -->
+            <div class="flex items-center gap-2">
+                <input type="hidden" name="range" value="custom">
+                <input type="date" name="start_date" value="{{ start_date|date:'Y-m-d' }}" class="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-slate-50">
+                <span class="text-slate-400">to</span>
+                <input type="date" name="end_date" value="{{ end_date|date:'Y-m-d' }}" class="px-2.5 py-1.5 border border-slate-200 rounded-lg text-xs bg-slate-50">
+                <button type="submit" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs transition-colors">
+                    Apply
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Monthly / Filtered Aggregate Metrics (Prompt Section 19) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Total Jobs -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Total Service Jobs</span>
+            <div class="mt-2 text-3xl font-bold text-slate-900">{{ total_jobs }}</div>
+            <div class="mt-2 pt-2 border-t border-slate-100 text-xs text-slate-500 flex justify-between">
+                <span>Completed: <strong class="text-emerald-700">{{ completed_jobs }}</strong></span>
+                <span>Pending: <strong class="text-amber-700">{{ pending_jobs }}</strong></span>
+            </div>
+        </div>
+
+        <!-- Revenue -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm bg-gradient-to-br from-white to-blue-50/20">
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Total Revenue Settled</span>
+            <div class="mt-2 text-2xl font-bold text-slate-900 font-mono">
+                {{ workshop.currency_symbol|default:"Rs." }} {{ total_revenue|intcomma }}
+            </div>
+            <div class="mt-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+                Turnover for selected period
+            </div>
+        </div>
+
+        <!-- Labor vs Parts Breakdown -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Labor vs Spare Parts</span>
+            <div class="mt-2 space-y-1 text-xs">
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Labor Charge:</span>
+                    <strong class="font-mono text-slate-900">{{ workshop.currency_symbol|default:"Rs." }} {{ total_service_charges|intcomma }}</strong>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Parts Used:</span>
+                    <strong class="font-mono text-amber-700">{{ workshop.currency_symbol|default:"Rs." }} {{ total_parts_charges|intcomma }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- Low Stock Items Warning -->
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Critical Stock Items</span>
+            <div class="mt-2 text-3xl font-bold text-rose-600 font-mono">{{ low_stock_items.count }}</div>
+            <div class="mt-2 pt-2 border-t border-slate-100 text-xs text-slate-500">
+                <a href="{% url 'inventory:inventory_list' %}?low_stock=1" class="text-blue-600 hover:underline">
+                    View low stock catalog →
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts Row -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Chart 1: Brand Revenue Distribution -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-900">Revenue by AC Brand</h2>
+            <div class="h-64 flex items-center justify-center">
+                <canvas id="brandChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Status Breakdown -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-slate-900">Service Jobs by Status</h2>
+            <div class="h-64 flex items-center justify-center">
+                <canvas id="statusChart"></canvas>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Technician Performance Table -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+        <h2 class="text-base font-bold text-slate-900">Technician Activity & Job Completion</h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-4 py-3">Technician</th>
+                        <th class="px-4 py-3">Current Status</th>
+                        <th class="px-4 py-3 text-center">Assigned in Period</th>
+                        <th class="px-4 py-3 text-center">Completed in Period</th>
+                        <th class="px-4 py-3 text-center">Completion Rate</th>
+                        <th class="px-4 py-3 text-right">Profile</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for tech in tech_stats %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-4 py-3 font-bold text-slate-900">
+                            {{ tech.user.get_full_name }}
+                            <span class="text-slate-400 block text-[11px] font-normal">📞 {{ tech.phone }}</span>
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-0.5 rounded-full font-bold text-[10px] 
+                                {% if tech.status == 'WORKING' %}bg-amber-100 text-amber-800
+                                {% elif tech.status == 'AVAILABLE' %}bg-emerald-100 text-emerald-800
+                                {% else %}bg-slate-100 text-slate-600{% endif %}">
+                                {{ tech.get_status_display }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-center font-bold text-slate-800 font-mono">{{ tech.assigned_count }}</td>
+                        <td class="px-4 py-3 text-center font-bold text-emerald-700 font-mono">{{ tech.completed_count }}</td>
+                        <td class="px-4 py-3 text-center">
+                            {% if tech.assigned_count > 0 %}
+                            <span class="font-bold text-slate-900">
+                                {% widthratio tech.completed_count tech.assigned_count 100 %}%
+                            </span>
+                            {% else %}
+                            <span class="text-slate-400">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <a href="{% url 'accounts:staff_detail' tech.id %}" class="text-blue-600 hover:underline font-semibold">
+                                View Profile
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Top Spare Parts Used in Period -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+        <h2 class="text-base font-bold text-slate-900">Top Spare Parts Consumed in this Period</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {% for p in top_parts %}
+            <div class="p-3.5 rounded-xl border border-slate-200 bg-slate-50/50 flex items-center justify-between text-xs">
+                <div>
+                    <div class="font-bold text-slate-900">{{ p.inventory_item__part_name }}</div>
+                    <div class="text-[11px] text-slate-500">Qty Used: <strong class="text-slate-800">{{ p.total_qty }} {{ p.inventory_item__unit }}</strong></div>
+                </div>
+                <div class="text-right font-mono font-bold text-slate-900">
+                    {{ workshop.currency_symbol|default:"Rs." }} {{ p.total_amount|intcomma }}
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-3 text-center py-6 text-slate-400 text-xs">No parts consumption logged in this period.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // 1. Brand Chart
+    const brandCtx = document.getElementById('brandChart').getContext('2d');
+    const brandLabels = [{% for b in brand_stats %}'{{ b.ac_brand_name }}',{% endfor %}];
+    const brandData = [{% for b in brand_stats %}{{ b.revenue|default:0 }},{% endfor %}];
+
+    new Chart(brandCtx, {
+        type: 'bar',
+        data: {
+            labels: brandLabels.length ? brandLabels : ['No Job Revenue'],
+            datasets: [{
+                label: 'Revenue ({{ workshop.currency_symbol|default:"Rs." }})',
+                data: brandData.length ? brandData : [0],
+                backgroundColor: '#2563eb',
+                borderRadius: 8,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: value => '{{ workshop.currency_symbol|default:"Rs." }} ' + value.toLocaleString()
+                    }
+                }
+            }
+        }
+    });
+
+    // 2. Status Chart
+    const statusCtx = document.getElementById('statusChart').getContext('2d');
+    const statusData = [{{ completed_closed_count }}, {{ in_progress_count }}, {{ waiting_parts_count }}, {{ assigned_new_count }}];
+    const hasStatusData = statusData.some(v => v > 0);
+
+    new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: hasStatusData ? ['Completed / Closed', 'In Progress', 'Waiting for Parts', 'Assigned / New'] : ['No Jobs in Period'],
+            datasets: [{
+                data: hasStatusData ? statusData : [1],
+                backgroundColor: hasStatusData ? ['#059669', '#d97706', '#ea580c', '#3b82f6'] : ['#e2e8f0'],
+                borderWidth: 0,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom' }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

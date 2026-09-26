@@ -1,0 +1,431 @@
+{% extends 'base.html' %}
+
+{% block title %}Create Service Job{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Create Service Job</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Register customer service request across AC, Refrigerator, Washing Machine, or Cooler</p>
+        </div>
+        <a href="{% url 'services:job_list' %}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-slate-200 text-slate-700 hover:bg-slate-50">
+            <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+            <span>Cancel</span>
+        </a>
+    </div>
+
+    <form method="POST" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-6">
+        {% csrf_token %}
+
+        <!-- SECTION 1: CUSTOMER RECORD -->
+        <div class="space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                <div>
+                    <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="user" class="w-4 h-4 text-blue-600"></i>
+                        <span>1. Customer Details</span>
+                    </h2>
+                    <p class="text-[11px] text-slate-500">Auto-identifies returning customers by phone number</p>
+                </div>
+                <div id="lookup-indicator" class="hidden text-xs font-semibold text-blue-600 flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+                    <span>Checking phone...</span>
+                </div>
+            </div>
+
+            <!-- Existing Customer Alert Box -->
+            <div id="existing-customer-alert" class="hidden p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs">
+                <div class="flex items-center gap-2 font-bold">
+                    <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+                    <span>Existing Customer Profile Matched!</span>
+                </div>
+                <p id="existing-customer-text" class="mt-1 text-emerald-800">
+                    Auto-filled details for this customer.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Customer Mobile Number *</label>
+                    <input 
+                        type="text" 
+                        name="phone" 
+                        id="cust_phone" 
+                        required 
+                        value="{{ preselected_customer.phone|default:customer_phone|default:'' }}"
+                        placeholder="e.g. 9842622354" 
+                        class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 text-slate-800 font-mono"
+                    >
+                    <span class="text-[11px] text-slate-400 mt-1 block">Type phone to instantly check previous records</span>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Customer Full Name *</label>
+                    <input 
+                        type="text" 
+                        name="customer_name" 
+                        id="cust_name" 
+                        required 
+                        value="{{ preselected_customer.name|default:'' }}"
+                        placeholder="e.g. Pradip Sharma, Posan Neupane" 
+                        class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 text-slate-800"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Address / Ward Location *</label>
+                    <input 
+                        type="text" 
+                        name="address" 
+                        id="cust_address" 
+                        required 
+                        value="{{ preselected_customer.address|default:workshop.address|default:'Damak, Jhapa' }}" 
+                        placeholder="e.g. Damak-05, Kirat Chowk"
+                        class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 text-slate-800"
+                    >
+                    <!-- Quick Local Area Buttons -->
+                    <div class="flex flex-wrap gap-1.5 mt-2">
+                        <span class="text-[10px] text-slate-400 self-center">Quick pick:</span>
+                        <button type="button" onclick="setAddress('Damak')" class="px-2 py-0.5 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">Damak</button>
+                        <button type="button" onclick="setAddress('Urlabari')" class="px-2 py-0.5 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">Urlabari</button>
+                        <button type="button" onclick="setAddress('Pathri')" class="px-2 py-0.5 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">Pathri</button>
+                        <button type="button" onclick="setAddress('Gauradaha')" class="px-2 py-0.5 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">Gauradaha</button>
+                        <button type="button" onclick="setAddress('Kirat Chowk')" class="px-2 py-0.5 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">Kirat Chowk</button>
+                        <button type="button" onclick="setAddress('Kankai')" class="px-2 py-0.5 text-[11px] bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-medium">Kankai</button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Landmark / Proximity</label>
+                    <input 
+                        type="text" 
+                        name="landmark" 
+                        id="cust_landmark" 
+                        value="{{ preselected_customer.landmark|default:'' }}"
+                        placeholder="e.g. Near DMK Electric Office, Near Party Palace" 
+                        class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 text-slate-800"
+                    >
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 2: APPLIANCE & JOB CLASSIFICATION -->
+        <div class="space-y-4 pt-2">
+            <div class="border-b border-slate-100 pb-2.5">
+                <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="layers" class="w-4 h-4 text-blue-600"></i>
+                    <span>2. Appliance Category & Job Type</span>
+                </h2>
+                <p class="text-[11px] text-slate-500">Select appliance type (AC, Ref, Washing Machine, Cooler) and nature of service</p>
+            </div>
+
+            <!-- Appliance Selection Radios -->
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Select Appliance *</label>
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 hover:border-blue-500 cursor-pointer bg-slate-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-600 has-[:checked]:text-blue-900 transition-all">
+                        <input type="radio" name="appliance_type" value="AC" {% if not preselected_unit or preselected_unit.appliance_type == 'AC' %}checked{% endif %} class="text-blue-600 focus:ring-blue-500">
+                        <div>
+                            <div class="text-xs font-bold">Air Conditioner</div>
+                            <div class="text-[10px] text-slate-500">Split, Window, Cassette</div>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 hover:border-blue-500 cursor-pointer bg-slate-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-600 has-[:checked]:text-blue-900 transition-all">
+                        <input type="radio" name="appliance_type" value="REFRIGERATOR" {% if preselected_unit.appliance_type == 'REFRIGERATOR' %}checked{% endif %} class="text-blue-600 focus:ring-blue-500">
+                        <div>
+                            <div class="text-xs font-bold">Refrigerator (Ref)</div>
+                            <div class="text-[10px] text-slate-500">Single/Double Door, Deep Freezer</div>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 hover:border-blue-500 cursor-pointer bg-slate-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-600 has-[:checked]:text-blue-900 transition-all">
+                        <input type="radio" name="appliance_type" value="WASHING_MACHINE" {% if preselected_unit.appliance_type == 'WASHING_MACHINE' %}checked{% endif %} class="text-blue-600 focus:ring-blue-500">
+                        <div>
+                            <div class="text-xs font-bold">Washing Machine (WM)</div>
+                            <div class="text-[10px] text-slate-500">Front/Top Load, Semi Auto</div>
+                        </div>
+                    </label>
+
+                    <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 hover:border-blue-500 cursor-pointer bg-slate-50 has-[:checked]:bg-blue-50 has-[:checked]:border-blue-600 has-[:checked]:text-blue-900 transition-all">
+                        <input type="radio" name="appliance_type" value="COOLER" {% if preselected_unit.appliance_type == 'COOLER' %}checked{% endif %} class="text-blue-600 focus:ring-blue-500">
+                        <div>
+                            <div class="text-xs font-bold">Air Cooler</div>
+                            <div class="text-[10px] text-slate-500">Desert, Room, Personal</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Job Type Selection (Spreadsheet 'Demo or install' / 'Work done') -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Job Type *</label>
+                    <select name="job_type" id="job_type" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 text-slate-800 font-semibold">
+                        <option value="GENERAL_SERVICE" selected>General Service / Maintenance (SVC only)</option>
+                        <option value="INSTALLATION">Installation (Install, gas, wall mount)</option>
+                        <option value="UNINSTALLATION">Uninstallation (Uninstall svc done)</option>
+                        <option value="REPAIR">Repair & Spare Parts Replacement</option>
+                        <option value="DEMO">Demo / Inspection</option>
+                        <option value="REPEAT_COMPLAINT">Repeat Complaint / Warranty Rework (Ree complain)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Brand *</label>
+                    <select name="brand" id="ac_brand" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 text-slate-800">
+                        {% for b in brands %}
+                        <option value="{{ b.id }}" {% if preselected_unit and preselected_unit.brand_id == b.id or selected_brand_id == b.id|stringformat:"s" %}selected{% elif not preselected_unit and not selected_brand_id and forloop.first %}selected{% endif %}>{{ b.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Existing Units Picker (if matched) -->
+            <input type="hidden" name="existing_unit_id" id="existing_unit_id" value="{{ preselected_unit.id|default:'' }}">
+            <div id="unit-selector-container" class="hidden p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <label class="block font-bold text-slate-700 mb-1">Pick Customer's Previously Serviced Machine:</label>
+                <select id="existing-units-select" class="w-full px-3 py-1.5 text-xs bg-white border border-slate-200 rounded-lg">
+                    <option value="">-- Choose Existing Unit or Enter New One Below --</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Unit Sub-type</label>
+                    <input type="text" name="ac_type" id="ac_type" value="{{ preselected_unit.ac_type|default:'Split AC' }}" placeholder="e.g. Split AC, Double Door, Front Load" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Capacity / Rating</label>
+                    <input type="text" name="capacity" id="ac_capacity" value="{{ preselected_unit.capacity|default:'1.5 Ton' }}" placeholder="e.g. 1.5 Ton, 220 Ltr, 7.5 Kg" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Location / Notes</label>
+                    <input type="text" name="location_notes" id="ac_loc" value="{{ preselected_unit.location_notes|default:'' }}" placeholder="e.g. Kitchen, 1st Floor, Balcony" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800">
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 3: COMPANY WARRANTY & BILLING TYPE -->
+        <div class="space-y-4 pt-2">
+            <div class="border-b border-slate-100 pb-2.5">
+                <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="shield-check" class="w-4 h-4 text-purple-600"></i>
+                    <span>3. Warranty & Payment Mode</span>
+                </h2>
+                <p class="text-[11px] text-slate-500">Specify if service is covered under Company/Brand Warranty (WTY) or Customer Paid</p>
+            </div>
+
+            <!-- Warranty Toggle -->
+            <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-3">
+                <label class="flex items-center gap-3 cursor-pointer">
+                    <input type="checkbox" name="is_warranty" id="is_warranty" onchange="toggleWarranty(this)" {% if selected_dealer_id %}checked{% endif %} class="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500">
+                    <div>
+                        <span class="text-xs font-bold text-slate-900 uppercase tracking-wider">Company Warranty Job (WTY - Free to Customer)</span>
+                        <p class="text-[11px] text-slate-500">Customer pays Rs. 0. Labor and spare parts will be claimed from the authorized brand dealer.</p>
+                    </div>
+                </label>
+
+                <!-- Dealer Selector (Shown if WTY checked) -->
+                <div id="dealer-selection-box" class="{% if not selected_dealer_id %}hidden{% endif %} pt-3 border-t border-slate-200 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-purple-900 mb-1">Which Brand Dealer will Reimburse / Pay? *</label>
+                        <select name="warranty_dealer" id="warranty_dealer" class="w-full px-3 py-2 text-xs bg-white border border-purple-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/20 text-slate-800 font-semibold">
+                            <option value="">-- Choose Authorizing Dealer --</option>
+                            {% for d in dealers %}
+                            <option value="{{ d.id }}" {% if selected_dealer_id == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }} ({{ d.brand.name|default:"Multi-Brand" }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="text-[11px] text-purple-800 self-center">
+                        ✓ Voucher will be marked as <strong class="font-mono">WTY</strong> and automatically added to the Dealer Claims Hub.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- SECTION 4: PROBLEM & ASSIGNMENT -->
+        <div class="space-y-4 pt-2">
+            <div class="border-b border-slate-100 pb-2.5">
+                <h2 class="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i data-lucide="wrench" class="w-4 h-4 text-blue-600"></i>
+                    <span>4. Problem Details & Technician Dispatch</span>
+                </h2>
+                <p class="text-[11px] text-slate-500">Customer reported symptoms, initial service fee, and assigned technician</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Common Issue *</label>
+                    <select name="service_type" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800">
+                        <option value="No Cooling">No Cooling / Poor Cooling</option>
+                        <option value="Not Working">Not Working / Machine Dead</option>
+                        <option value="General Service">General Service / Cleaning (SVC only)</option>
+                        <option value="Gas Charging">Gas Charging & Leak Repair</option>
+                        <option value="Relay Overload">Relay / Overload Replacement</option>
+                        <option value="Motor or PCB">Motor or PCB Failure</option>
+                        <option value="Compressor Issue">Compressor Fault</option>
+                        <option value="Drain & Gasket">Drain Pipe Blockage / Gasket Repair</option>
+                        <option value="Water Leakage">Water Dripping / Leakage</option>
+                        <option value="Installation">Installation / Wall Mount</option>
+                        <option value="Other Repair">Other Repair</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Assign Technician</label>
+                    <select name="technician" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800">
+                        <option value="">-- Leave Unassigned (Status: NEW) --</option>
+                        {% for tech in technicians %}
+                        <option value="{{ tech.user.id }}" {% if selected_tech_id == tech.user.id|stringformat:"s" %}selected{% endif %}>
+                            {{ tech.user.get_full_name }} ({{ tech.get_status_display }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Service Charge ({{ workshop.currency_symbol|default:"Rs." }})</label>
+                    <input type="number" name="service_charge" id="service_charge_input" value="500" min="0" step="50" placeholder="e.g. 500, 1500" class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800 font-mono">
+                </div>
+
+                <div class="sm:col-span-3">
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Customer Complaint & Work Requirements *</label>
+                    <textarea 
+                        name="complaint" 
+                        required 
+                        rows="2" 
+                        placeholder="e.g. 'No cooling, compressor not starting', 'Gass charge svc needed', 'Washing machine not spinning'..."
+                        class="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800"
+                    ></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+            <span class="text-xs text-slate-400">Generates voucher e.g. <strong>JOB-2026-XXXXX</strong></span>
+            <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-sm shadow-md shadow-blue-600/30 transition-all">
+                Create & Dispatch Job
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function setAddress(addr) {
+    document.getElementById('cust_address').value = addr;
+}
+
+function toggleWarranty(checkbox) {
+    const box = document.getElementById('dealer-selection-box');
+    const chargeInput = document.getElementById('service_charge_input');
+    if (checkbox.checked) {
+        box.classList.remove('hidden');
+    } else {
+        box.classList.add('hidden');
+    }
+}
+
+// Real-time Phone Lookup
+const phoneInput = document.getElementById('cust_phone');
+const nameInput = document.getElementById('cust_name');
+const addrInput = document.getElementById('cust_address');
+const landmarkInput = document.getElementById('cust_landmark');
+const indicator = document.getElementById('lookup-indicator');
+const alertBox = document.getElementById('existing-customer-alert');
+const alertText = document.getElementById('existing-customer-text');
+const unitContainer = document.getElementById('unit-selector-container');
+const unitsSelect = document.getElementById('existing-units-select');
+
+let debounceTimer;
+
+phoneInput.addEventListener('input', function() {
+    clearTimeout(debounceTimer);
+    const phone = this.value.trim();
+
+    if (phone.length >= 7) {
+        indicator.classList.remove('hidden');
+        debounceTimer = setTimeout(() => {
+            fetch(`{% url 'customers:customer_lookup' %}?phone=${encodeURIComponent(phone)}`)
+                .then(r => r.json())
+                .then(data => {
+                    indicator.classList.add('hidden');
+                    if (data.found) {
+                        nameInput.value = data.name;
+                        addrInput.value = data.address;
+                        landmarkInput.value = data.landmark || '';
+                        
+                        alertText.innerText = `Found existing profile for ${data.name} (${data.total_jobs} past service job(s)). Address auto-filled.`;
+                        alertBox.classList.remove('hidden');
+
+                        const preselectedUnitId = "{{ preselected_unit.id|default:'' }}";
+                        if (data.units && data.units.length > 0) {
+                            unitsSelect.innerHTML = '<option value="">-- Choose Existing Unit or Enter New Below --</option>';
+                            let matchFound = false;
+                            data.units.forEach((u, i) => {
+                                const isMatch = preselectedUnitId && String(u.id) === String(preselectedUnitId);
+                                if (isMatch) matchFound = true;
+                                unitsSelect.innerHTML += `<option value="${i}" ${isMatch ? 'selected' : ''}>[${u.appliance_name || 'Appliance'}] ${u.brand || 'Multi-Brand'} ${u.ac_type} (${u.capacity}) - ${u.location_notes || 'No location'}</option>`;
+                            });
+                            unitContainer.classList.remove('hidden');
+
+                            unitsSelect.onchange = function() {
+                                const idx = this.value;
+                                const existingUnitInput = document.getElementById('existing_unit_id');
+                                if (idx !== "") {
+                                    const unit = data.units[idx];
+                                    existingUnitInput.value = unit.id || "";
+                                    if (unit.ac_type) document.getElementById('ac_type').value = unit.ac_type;
+                                    if (unit.capacity) document.getElementById('ac_capacity').value = unit.capacity;
+                                    if (unit.location_notes) document.getElementById('ac_loc').value = unit.location_notes;
+                                    
+                                    // Match appliance radio
+                                    if (unit.appliance_type) {
+                                        const rad = document.querySelector(`input[name="appliance_type"][value="${unit.appliance_type}"]`);
+                                        if (rad) rad.checked = true;
+                                    }
+
+                                    // Match brand dropdown option
+                                    const brandSelect = document.getElementById('ac_brand');
+                                    if (unit.brand && brandSelect) {
+                                        for (let opt of brandSelect.options) {
+                                            if (opt.text.trim().toLowerCase() === unit.brand.trim().toLowerCase()) {
+                                                opt.selected = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    existingUnitInput.value = "";
+                                }
+                            };
+                        } else {
+                            document.getElementById('existing_unit_id').value = "";
+                            unitContainer.classList.add('hidden');
+                        }
+                    } else {
+                        document.getElementById('existing_unit_id').value = "";
+                        alertBox.classList.add('hidden');
+                        unitContainer.classList.add('hidden');
+                    }
+                })
+                .catch(() => indicator.classList.add('hidden'));
+        }, 300);
+    } else {
+        indicator.classList.add('hidden');
+        alertBox.classList.add('hidden');
+        unitContainer.classList.add('hidden');
+    }
+});
+
+if (phoneInput.value.length >= 7) {
+    phoneInput.dispatchEvent(new Event('input'));
+}
+</script>
+{% endblock %}

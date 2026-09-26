@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{{ item.part_name }} - Inventory Detail{% endblock %}
+
+{% block content %}
+<div class="space-y-6 max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2">
+                <a href="{% url 'inventory:inventory_list' %}" class="text-slate-400 hover:text-slate-600">
+                    <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                </a>
+                <h1 class="text-2xl font-bold text-slate-900 tracking-tight">{{ item.part_name }}</h1>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Code: <span class="font-mono text-slate-700">{{ item.part_code|default:"-" }}</span> • Category: {{ item.category.name|default:"General" }}</p>
+        </div>
+
+        {% if not request.user.staff_profile.is_technician %}
+        <div class="flex items-center gap-2">
+            <button onclick="document.getElementById('restock-modal').classList.remove('hidden')" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5">
+                <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                <span>Restock / Adjust Stock</span>
+            </button>
+            <a href="{% url 'inventory:inventory_edit' item.id %}" class="px-3 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-semibold rounded-xl transition-colors">
+                Edit Item
+            </a>
+        </div>
+        {% else %}
+        <div class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+            <i data-lucide="check-circle" class="w-4 h-4 text-blue-600"></i>
+            <span>Technician Availability Check</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Stock Status Alert Banner if Low Stock -->
+    {% if item.is_low_stock %}
+    <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-900 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-2 text-xs">
+            <i data-lucide="alert-triangle" class="w-5 h-5 text-rose-600 shrink-0"></i>
+            <div>
+                <span class="font-bold">LOW STOCK WARNING:</span>
+                Current stock is <strong>{{ item.stock_display }}</strong>, which is at or below minimum threshold ({{ item.min_stock_display }}).
+            </div>
+        </div>
+        {% if not request.user.staff_profile.is_technician %}
+        <button onclick="document.getElementById('restock-modal').classList.remove('hidden')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold shrink-0">
+            Restock Now
+        </button>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- Key Metrics Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Current Stock</span>
+            <div class="mt-2 text-3xl font-bold {% if item.is_low_stock %}text-rose-600{% else %}text-slate-900{% endif %} font-mono">
+                {{ item.stock_display }}
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Min threshold: {{ item.min_stock_display }}</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Selling Price</span>
+            <div class="mt-2 text-2xl font-bold text-blue-700 font-mono">
+                {{ workshop.currency_symbol|default:"Rs." }} {{ item.selling_price|intcomma }}
+            </div>
+            {% if not request.user.staff_profile.is_technician %}
+            <p class="text-xs text-slate-500 mt-1">Cost: {{ workshop.currency_symbol|default:"Rs." }} {{ item.purchase_price|intcomma }}</p>
+            {% else %}
+            <p class="text-xs text-slate-400 mt-1">Retail workshop rate</p>
+            {% endif %}
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Brand / Compatibility</span>
+            <div class="mt-2 text-lg font-bold text-slate-900">
+                {{ item.brand.name|default:"Common" }}
+            </div>
+            <p class="text-xs text-slate-500 mt-1">{{ item.get_inventory_type_display }}</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+            <span class="text-xs font-bold uppercase tracking-wider text-slate-400">Storage Bin / Rack</span>
+            <div class="mt-2 text-lg font-bold text-slate-900">
+                {{ item.storage_bin|default:"Main Store" }}
+            </div>
+            {% if not request.user.staff_profile.is_technician %}
+            <p class="text-xs text-slate-500 mt-1">Supplier: {{ item.supplier|default:"-" }}</p>
+            {% else %}
+            <p class="text-xs text-slate-400 mt-1">Bin location for parts retrieval</p>
+            {% endif %}
+        </div>
+    </div>
+
+
+    <!-- Service Job Usages (Direct Connectivity) -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+        <div class="flex items-center justify-between">
+            <div>
+                <h2 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="wrench" class="w-4 h-4 text-blue-600"></i>
+                    <span>Jobs Where This Spare Part Was Installed ({{ job_usages.count }})</span>
+                </h2>
+                <p class="text-xs text-slate-500">Service jobs and machine repairs consuming this item from inventory</p>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-3.5 py-2.5">Job Voucher</th>
+                        <th class="px-3.5 py-2.5">Customer & Location</th>
+                        <th class="px-3.5 py-2.5">Appliance</th>
+                        <th class="px-3.5 py-2.5 text-center">Qty Consumed</th>
+                        <th class="px-3.5 py-2.5 text-right">Price Charged</th>
+                        <th class="px-3.5 py-2.5 text-right">Subtotal</th>
+                        <th class="px-3.5 py-2.5">Added By</th>
+                        <th class="px-3.5 py-2.5 text-right">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for usage in job_usages %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-3.5 py-2.5">
+                            <a href="{% url 'services:job_detail' usage.job.id %}" class="font-bold text-blue-700 hover:underline font-mono">
+                                {{ usage.job.job_number }}
+                            </a>
+                            <span class="block text-[10px] text-slate-400">{{ usage.job.get_status_display }}</span>
+                        </td>
+                        <td class="px-3.5 py-2.5">
+                            {% if not request.user.staff_profile.is_technician %}
+                            <a href="{% url 'customers:customer_detail' usage.job.customer.id %}" class="font-semibold text-slate-900 hover:text-blue-600 block">
+                                {{ usage.job.customer.name }}
+                            </a>
+                            {% else %}
+                            <span class="font-semibold text-slate-900 block">{{ usage.job.customer.name }}</span>
+                            {% endif %}
+                            <span class="text-slate-400 font-mono text-[11px]">{{ usage.job.customer.phone }}</span>
+                        </td>
+                        <td class="px-3.5 py-2.5">
+                            <span class="font-medium text-slate-800">{{ usage.job.ac_brand_name }} ({{ usage.job.get_appliance_type_display }})</span>
+                            <span class="block text-[10px] text-slate-400">{{ usage.job.service_type }}</span>
+                        </td>
+                        <td class="px-3.5 py-2.5 text-center font-bold text-slate-900 font-mono">
+                            {{ usage.quantity }} {{ item.unit }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-right font-mono">
+                            {{ workshop.currency_symbol|default:"Rs." }} {{ usage.unit_price|intcomma }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-right font-bold text-slate-900 font-mono">
+                            {{ workshop.currency_symbol|default:"Rs." }} {{ usage.subtotal|intcomma }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-slate-600">
+                            {{ usage.added_by.get_full_name|default:usage.added_by.username|default:"Technician" }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-right text-slate-400">
+                            {{ usage.added_at|date:"d M Y" }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="px-3.5 py-6 text-center text-slate-400">
+                            No service jobs have consumed this spare part yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Stock Transactions Ledger (Prompt Section 15: Never directly overwrite stock without transaction) -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+        <div>
+            <h2 class="text-base font-bold text-slate-900">Stock Transaction Ledger</h2>
+            <p class="text-xs text-slate-500">Every stock deduction, purchase, return and adjustment is logged with audit details</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-3.5 py-2.5">Date & Time</th>
+                        <th class="px-3.5 py-2.5">Transaction Type</th>
+                        <th class="px-3.5 py-2.5 text-center">Change</th>
+                        <th class="px-3.5 py-2.5 text-center">Balance After</th>
+                        <th class="px-3.5 py-2.5">Related Job / Ref</th>
+                        <th class="px-3.5 py-2.5">Staff</th>
+                        <th class="px-3.5 py-2.5">Notes</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for txn in transactions %}
+                    <tr class="hover:bg-slate-50">
+                        <td class="px-3.5 py-2.5 text-slate-500">
+                            {{ txn.created_at|date:"d M Y, h:i A" }}
+                        </td>
+                        <td class="px-3.5 py-2.5">
+                            <span class="px-2 py-0.5 rounded font-bold text-[10px] 
+                                {% if txn.transaction_type == 'SERVICE_USAGE' %}bg-amber-100 text-amber-800
+                                {% elif txn.transaction_type == 'PURCHASE' %}bg-emerald-100 text-emerald-800
+                                {% elif txn.transaction_type == 'RETURN' %}bg-blue-100 text-blue-800
+                                {% else %}bg-purple-100 text-purple-800{% endif %}">
+                                {{ txn.get_transaction_type_display }}
+                            </span>
+                        </td>
+                        <td class="px-3.5 py-2.5 text-center font-bold font-mono {% if txn.quantity_change < 0 %}text-rose-600{% else %}text-emerald-600{% endif %}">
+                            {{ txn.quantity_change|stringformat:"+f" }} {{ item.unit }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-center font-bold text-slate-900 font-mono">
+                            {{ txn.balance_after }} {{ item.unit }}
+                        </td>
+                        <td class="px-3.5 py-2.5 font-mono text-blue-700 font-semibold">
+                            {% if txn.service_job %}
+                            <a href="{% url 'services:job_detail' txn.service_job.id %}" class="hover:underline text-blue-600">
+                                {{ txn.job_reference|default:txn.service_job.job_number }}
+                            </a>
+                            {% else %}
+                            {{ txn.job_reference|default:"-" }}
+                            {% endif %}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-slate-600">
+                            {{ txn.performed_by.get_full_name|default:txn.performed_by.username|default:"System" }}
+                        </td>
+                        <td class="px-3.5 py-2.5 text-slate-500 italic">
+                            {{ txn.notes|default:"-" }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="px-3.5 py-6 text-center text-slate-400">
+                            No transactions recorded yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if not request.user.staff_profile.is_technician %}
+<!-- RESTOCK / ADJUST MODAL -->
+<div id="restock-modal" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-xl">
+        <h3 class="text-base font-bold text-slate-900">Restock / Adjust Stock: {{ item.part_name }}</h3>
+        <p class="text-xs text-slate-500">Current available quantity: <strong class="text-slate-800">{{ item.stock_display }}</strong></p>
+
+        <form method="POST" action="{% url 'inventory:inventory_adjust' item.id %}" class="space-y-3">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Action Type</label>
+                <select name="action_type" id="adjust_action" onchange="toggleAdjustmentFields(this.value)" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+                    <option value="PURCHASE">🛒 Restock (Purchase from Supplier)</option>
+                    <option value="ADJUSTMENT">⚙️ Manual Adjustment (Audit / Correction)</option>
+                </select>
+            </div>
+
+            <div id="direction_div" class="hidden">
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Adjustment Direction</label>
+                <select name="direction" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+                    <option value="ADD">+ Increase Stock</option>
+                    <option value="SUBTRACT">- Decrease Stock (Damaged / Missing)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Quantity ({{ item.unit }})</label>
+                <input type="number" step="0.5" name="quantity" required min="0.5" value="5" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-mono">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Purchase / Unit Price ({{ workshop.currency_symbol|default:"Rs." }})</label>
+                <input type="number" name="unit_price" value="{{ item.purchase_price }}" step="10" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl font-mono">
+            </div>
+
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Reason / Supplier Notes</label>
+                <input type="text" name="notes" placeholder="e.g. Received from Narayangarh supplier" class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl">
+            </div>
+
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" onclick="document.getElementById('restock-modal').classList.add('hidden')" class="px-3 py-1.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg">Cancel</button>
+                <button type="submit" class="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow-sm">Save Stock Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleAdjustmentFields(val) {
+    const div = document.getElementById('direction_div');
+    if (val === 'ADJUSTMENT') {
+        div.classList.remove('hidden');
+    } else {
+        div.classList.add('hidden');
+    }
+}
+</script>
+{% endblock %}

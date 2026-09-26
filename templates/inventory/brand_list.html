@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Supported AC Brands{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Supported AC Brands</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Multi-brand AC manufacturers, specialized spare parts catalog and brand history</p>
+        </div>
+        {% if request.user.staff_profile.is_admin %}
+        <a href="{% url 'inventory:brand_create' %}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/30 transition-all">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Add Brand</span>
+        </a>
+        {% endif %}
+    </div>
+
+    <!-- Brands Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {% for brand in brands %}
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between hover:border-slate-300 transition-all space-y-4">
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold {% if brand.is_common %}bg-slate-100 text-slate-800{% else %}bg-blue-50 text-blue-800 border border-blue-100{% endif %}">
+                        {% if brand.is_common %}Universal Parts{% else %}Brand Specific{% endif %}
+                    </span>
+                    <span class="text-xs font-mono font-bold text-slate-400">{{ brand.code }}</span>
+                </div>
+
+                <h3 class="text-lg font-bold text-slate-900">{{ brand.name }}</h3>
+                <p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
+                    {{ brand.description|default:"Standard multi-brand air conditioning systems and spare parts." }}
+                </p>
+
+                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <span class="text-slate-500">Catalog Parts:</span>
+                    <strong class="text-slate-900">{{ brand.items_count }} items</strong>
+                </div>
+            </div>
+
+            <div class="pt-2">
+                <a href="{% url 'inventory:brand_detail' brand.id %}" class="w-full py-2 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1 border border-slate-200">
+                    <span>Brand Overview & Jobs</span>
+                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
