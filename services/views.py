@@ -15,9 +15,6 @@ from billing.models import Invoice, Dealer
 
 @login_required
 def job_list_view(request):
-    if hasattr(request.user, 'staff_profile') and request.user.staff_profile.is_technician:
-        return redirect('services:technician_view')
-
     workshop = Business.objects.first()
     status_filter = request.GET.get('status', '')
     tech_id = request.GET.get('technician', '')
@@ -268,7 +265,7 @@ def job_create_view(request):
             details=f"Job Type: {job.get_job_type_display()}, Assigned to {tech_user.get_full_name() if tech_user else 'Unassigned'}"
         )
 
-        messages.success(request, f"Service Job {job.job_number} created successfully.")
+        messages.success(request, f"Service Job {job.job_number} created successfully! You can now send the job details to technician via WhatsApp below.")
         return redirect('services:job_detail', pk=job.pk)
 
     dealers = Dealer.objects.filter(business=workshop, is_active=True)
@@ -308,18 +305,21 @@ def job_create_view(request):
 @login_required
 def job_detail_view(request, pk):
     job = get_object_or_404(
-        ServiceJob.objects.select_related('customer', 'technician', 'ac_unit', 'created_by'),
+        ServiceJob.objects.select_related('customer', 'technician', 'ac_unit', 'brand', 'created_by'),
         pk=pk
     )
-    if hasattr(request.user, 'staff_profile') and request.user.staff_profile.is_technician:
-        if job.technician != request.user:
-            messages.error(request, "Access restricted: You are only authorized to view jobs assigned to you.")
-            return redirect('services:technician_view')
-
     workshop = job.business
     work_logs = job.work_logs.select_related('technician').order_by('created_at')
     parts_used = job.parts_used.select_related('inventory_item', 'added_by').order_by('added_at')
-    
+
+    # Ensure linked Invoice is always safely synced and present
+    invoice = getattr(job, 'invoice', None)
+    if not invoice:
+        try:
+            invoice = Invoice.sync_from_job(job)
+        except Exception:
+            invoice = None
+
     # Available inventory items for adding parts (Brand-specific for this brand OR Common)
     brand_obj = job.ac_unit.brand if job.ac_unit else None
     available_parts = InventoryItem.objects.filter(business=workshop).filter(
@@ -334,14 +334,52 @@ def job_detail_view(request, pk):
     # Technicians list for re-assignment
     technicians = StaffProfile.objects.filter(business=workshop, role='TECHNICIAN').select_related('user')
 
+    # WhatsApp pre-formatted job dispatch
+    tech_phone = ""
+    tech_user = job.technician
+    if tech_user and hasattr(tech_user, 'staff_profile') and tech_user.staff_profile.phone:
+        raw_phone = tech_user.staff_profile.phone.strip().replace(" ", "").replace("-", "").replace("+", "")
+        if len(raw_phone) == 10 and raw_phone.startswith('9'):
+            tech_phone = f"977{raw_phone}"
+        else:
+            tech_phone = raw_phone
+
+    import urllib.parse
+    brand_label = job.ac_brand_name or (job.brand.name if job.brand else "General")
+    warranty_label = "Warranty Claim" if job.is_warranty else "Customer Paid"
+    landmark_str = f" (Near {job.customer.landmark})" if job.customer.landmark else ""
+
+    wa_lines = [
+        f"🔧 *JOB ASSIGNMENT - {job.job_number}*",
+        f"━━━━━━━━━━━━━━━━━━━━",
+        f"👤 *Customer:* {job.customer.name}",
+        f"📞 *Phone:* {job.customer.phone}",
+        f"📍 *Location:* {job.customer.address or 'Workshop / On-site'}{landmark_str}",
+        f"━━━━━━━━━━━━━━━━━━━━",
+        f"❄️ *Appliance:* {job.get_appliance_type_display()} ({brand_label})",
+        f"🛠️ *Job Type:* {job.get_job_type_display()}",
+        f"⚠️ *Complaint:* {job.complaint or 'Inspection / Service'}",
+        f"━━━━━━━━━━━━━━━━━━━━",
+        f"💰 *Fee:* Rs. {job.service_charge:,.0f} ({warranty_label})",
+        f"📅 *Date:* {job.created_at.strftime('%Y-%m-%d')}",
+    ]
+    whatsapp_text = "\n".join(wa_lines)
+    whatsapp_url = f"https://api.whatsapp.com/send?text={urllib.parse.quote(whatsapp_text)}"
+    if tech_phone:
+        whatsapp_url = f"https://api.whatsapp.com/send?phone={tech_phone}&text={urllib.parse.quote(whatsapp_text)}"
+
     context = {
         'job': job,
+        'invoice': invoice,
         'work_logs': work_logs,
         'parts_used': parts_used,
         'available_parts': available_parts,
         'payment_qrs': payment_qrs,
         'technicians': technicians,
         'dealers': Dealer.objects.filter(business=workshop, is_active=True),
+        'whatsapp_text': whatsapp_text,
+        'whatsapp_url': whatsapp_url,
+        'tech_phone': tech_phone,
     }
     return render(request, 'services/job_detail.html', context)
 

@@ -14,10 +14,6 @@ from billing.models import Invoice
 
 @login_required
 def dashboard_view(request):
-    # Technicians should only see their assigned work, not general workshop metrics
-    if hasattr(request.user, 'staff_profile') and request.user.staff_profile.is_technician:
-        return redirect('services:technician_view')
-
     workshop = Business.objects.first()
     today = timezone.localdate()
 

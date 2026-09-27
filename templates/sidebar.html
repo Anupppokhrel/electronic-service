@@ -13,34 +13,6 @@
 
     <!-- Navigation Links -->
     <nav class="flex-1 px-3 py-4 space-y-1 overflow-y-auto sidebar-scroll">
-        {% if request.user.staff_profile.is_technician %}
-        <!-- Technician Limited Navigation: Assigned Work & Inventory Availability ONLY -->
-        <div class="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-            Technician Workspace
-        </div>
-
-        <!-- Technician Work View (Their Assigned Jobs) -->
-        <a href="{% url 'services:technician_view' %}" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {% if request.resolver_match.url_name == 'technician_view' or 'services' in request.resolver_match.app_names %}bg-blue-600 text-white shadow-sm shadow-blue-600/30{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
-            <div class="flex items-center gap-3">
-                <i data-lucide="wrench" class="w-4 h-4 text-emerald-400"></i>
-                <span class="font-semibold text-white">My Assigned Work</span>
-            </div>
-            <span class="px-1.5 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-950 text-emerald-300 border border-emerald-800/50">Field</span>
-        </a>
-
-        <!-- Inventory Availability (Read-Only stock check) -->
-        <a href="{% url 'inventory:inventory_list' %}" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {% if 'inventory' in request.resolver_match.app_names %}bg-blue-600 text-white shadow-sm shadow-blue-600/30{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
-            <div class="flex items-center gap-3">
-                <i data-lucide="boxes" class="w-4 h-4 text-blue-400"></i>
-                <span>Inventory Availability</span>
-            </div>
-            {% if low_stock_count > 0 %}
-            <span class="px-1.5 py-0.5 text-[11px] font-bold rounded-md bg-rose-500/20 text-rose-300 border border-rose-500/30">{{ low_stock_count }} Low</span>
-            {% endif %}
-        </a>
-
-        {% else %}
-        <!-- Workshop Owner / Administrator Full Navigation -->
         <!-- Dashboard -->
         <a href="{% url 'core:dashboard' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {% if request.resolver_match.url_name == 'dashboard' %}bg-blue-600 text-white shadow-sm shadow-blue-600/30{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
             <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
@@ -48,7 +20,7 @@
         </a>
 
         <!-- Jobs & Services -->
-        <a href="{% url 'services:job_list' %}" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {% if 'services' in request.resolver_match.app_names and request.resolver_match.url_name != 'technician_view' %}bg-blue-600 text-white shadow-sm shadow-blue-600/30{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
+        <a href="{% url 'services:job_list' %}" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {% if 'services' in request.resolver_match.app_names %}bg-blue-600 text-white shadow-sm shadow-blue-600/30{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
             <div class="flex items-center gap-3">
                 <i data-lucide="wrench" class="w-4 h-4"></i>
                 <span>Jobs & Services</span>
@@ -56,15 +28,6 @@
             {% if active_jobs_count > 0 %}
             <span class="px-1.5 py-0.5 text-[11px] font-bold rounded-md bg-amber-500 text-slate-950">{{ active_jobs_count }}</span>
             {% endif %}
-        </a>
-
-        <!-- Technician Work View (Special Mobile/Staff view) -->
-        <a href="{% url 'services:technician_view' %}" class="flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {% if request.resolver_match.url_name == 'technician_view' %}bg-blue-600 text-white shadow-sm shadow-blue-600/30{% else %}text-slate-400 hover:text-white hover:bg-slate-800/60{% endif %}">
-            <div class="flex items-center gap-3">
-                <i data-lucide="smartphone" class="w-4 h-4 text-emerald-400"></i>
-                <span class="text-emerald-300 font-semibold">Tech Field Hub</span>
-            </div>
-            <span class="px-1.5 py-0.5 text-[10px] uppercase font-bold rounded bg-emerald-950 text-emerald-300 border border-emerald-800/50">Mobile</span>
         </a>
 
         <!-- Customers -->
@@ -84,10 +47,10 @@
             {% endif %}
         </a>
 
-        <!-- Brands -->
+        <!-- Brands & Spares Catalog -->
         <a href="{% url 'inventory:brand_list' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {% if 'brands' in request.path %}bg-blue-600 text-white shadow-sm shadow-blue-600/30{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
             <i data-lucide="tag" class="w-4 h-4"></i>
-            <span>Brands</span>
+            <span>Brand Spares</span>
         </a>
 
         <!-- Staff -->
@@ -138,13 +101,6 @@
             <i data-lucide="qr-code" class="w-4 h-4"></i>
             <span>Payment QRs</span>
         </a>
-
-        <!-- Activity Log -->
-        <a href="{% url 'core:activity_logs' %}" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors {% if request.resolver_match.url_name == 'activity_logs' %}bg-blue-600 text-white shadow-sm shadow-blue-600/30{% else %}text-slate-300 hover:text-white hover:bg-slate-800/60{% endif %}">
-            <i data-lucide="activity" class="w-4 h-4"></i>
-            <span>Activity Log</span>
-        </a>
-        {% endif %}
     </nav>
 
 

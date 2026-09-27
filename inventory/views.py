@@ -223,14 +223,68 @@ def inventory_adjust_stock_view(request, pk):
     return redirect('inventory:inventory_detail', pk=pk)
 
 # Brands
-@admin_required
+@login_required
 def brand_list_view(request):
     workshop = Business.objects.first()
     brands = Brand.objects.filter(business=workshop).annotate(
         items_count=Count('inventory_items')
     ).order_by('name')
 
-    context = {'brands': brands}
+    selected_brand_id = request.GET.get('brand', '')
+    search = request.GET.get('search', '').strip()
+    low_stock = request.GET.get('low_stock', '')
+
+    active_brand = None
+    if selected_brand_id:
+        active_brand = brands.filter(id=selected_brand_id).first()
+    
+    # Default to the first brand if no explicit selection, unless user clicked 'all'
+    if not active_brand and brands.exists():
+        if request.GET.get('view') != 'all':
+            active_brand = brands.first()
+
+    if active_brand:
+        spare_parts = InventoryItem.objects.filter(
+            business=workshop,
+            brand=active_brand
+        ).select_related('category')
+    else:
+        spare_parts = InventoryItem.objects.filter(
+            business=workshop
+        ).select_related('brand', 'category')
+
+    if search:
+        spare_parts = spare_parts.filter(
+            Q(part_name__icontains=search) |
+            Q(part_code__icontains=search) |
+            Q(supplier__icontains=search)
+        )
+    if low_stock == '1':
+        spare_parts = spare_parts.filter(quantity__lte=F('minimum_stock'))
+
+    spare_parts = spare_parts.order_by('part_name')
+
+    # Brand-specific metrics
+    brand_stats = {}
+    if active_brand:
+        total_items = active_brand.inventory_items.count()
+        low_stock_count = active_brand.inventory_items.filter(quantity__lte=F('minimum_stock')).count()
+        total_qty = active_brand.inventory_items.aggregate(total=Sum('quantity'))['total'] or Decimal('0')
+        brand_stats = {
+            'total_items': total_items,
+            'low_stock_count': low_stock_count,
+            'total_qty': total_qty,
+        }
+
+    context = {
+        'brands': brands,
+        'active_brand': active_brand,
+        'selected_brand_id': str(active_brand.id) if active_brand else '',
+        'spare_parts': spare_parts,
+        'search': search,
+        'low_stock': low_stock,
+        'brand_stats': brand_stats,
+    }
     return render(request, 'inventory/brand_list.html', context)
 
 @admin_required

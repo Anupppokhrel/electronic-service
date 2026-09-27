@@ -1,53 +1,285 @@
 {% extends 'base.html' %}
+{% load humanize %}
 
-{% block title %}Supported AC Brands{% endblock %}
+{% block title %}Brand Spare Parts Catalog{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
+    <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Supported AC Brands</h1>
-            <p class="text-xs text-slate-500 mt-0.5">Multi-brand AC manufacturers, specialized spare parts catalog and brand history</p>
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-sm">
+                    <i data-lucide="tag" class="w-4 h-4"></i>
+                </div>
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Brand Spare Parts Catalog</h1>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Independent spare parts inventory, stock tracking and pricing categorized by appliance brand</p>
         </div>
-        {% if request.user.staff_profile.is_admin %}
-        <a href="{% url 'inventory:brand_create' %}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/30 transition-all">
-            <i data-lucide="plus" class="w-4 h-4"></i>
-            <span>Add Brand</span>
-        </a>
-        {% endif %}
+        <div class="flex items-center gap-2 flex-wrap">
+            {% if active_brand %}
+            <a href="{% url 'inventory:inventory_create' %}?brand={{ active_brand.id }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Add {{ active_brand.name }} Part</span>
+            </a>
+            {% else %}
+            <a href="{% url 'inventory:inventory_create' %}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/30 transition-all">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Add Spare Part</span>
+            </a>
+            {% endif %}
+            <a href="{% url 'inventory:brand_create' %}" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm transition-colors">
+                <i data-lucide="plus-circle" class="w-4 h-4 text-slate-500"></i>
+                <span>New Brand</span>
+            </a>
+        </div>
     </div>
 
-    <!-- Brands Grid -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {% for brand in brands %}
-        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between hover:border-slate-300 transition-all space-y-4">
-            <div>
-                <div class="flex items-center justify-between mb-3">
-                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold {% if brand.is_common %}bg-slate-100 text-slate-800{% else %}bg-blue-50 text-blue-800 border border-blue-100{% endif %}">
-                        {% if brand.is_common %}Universal Parts{% else %}Brand Specific{% endif %}
-                    </span>
-                    <span class="text-xs font-mono font-bold text-slate-400">{{ brand.code }}</span>
-                </div>
-
-                <h3 class="text-lg font-bold text-slate-900">{{ brand.name }}</h3>
-                <p class="text-xs text-slate-500 mt-1 line-clamp-2 leading-relaxed">
-                    {{ brand.description|default:"Standard multi-brand air conditioning systems and spare parts." }}
-                </p>
-
-                <div class="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
-                    <span class="text-slate-500">Catalog Parts:</span>
-                    <strong class="text-slate-900">{{ brand.items_count }} items</strong>
-                </div>
-            </div>
-
-            <div class="pt-2">
-                <a href="{% url 'inventory:brand_detail' brand.id %}" class="w-full py-2 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1 border border-slate-200">
-                    <span>Brand Overview & Jobs</span>
-                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
-                </a>
-            </div>
+    <!-- BRAND SELECTOR TABS / PILLS -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 p-3 shadow-sm">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">
+            Select Brand to Manage Spare Parts:
         </div>
-        {% endfor %}
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+            {% for b in brands %}
+            <a href="?brand={{ b.id }}" 
+               class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-2 border 
+               {% if active_brand and active_brand.id == b.id %}
+                   bg-blue-600 border-blue-600 text-white shadow-sm shadow-blue-500/25 ring-2 ring-blue-600/20
+               {% else %}
+                   bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300
+               {% endif %}">
+                <i data-lucide="tag" class="w-3.5 h-3.5 {% if active_brand and active_brand.id == b.id %}text-white{% else %}text-slate-400{% endif %}"></i>
+                <span>{{ b.name }}</span>
+                <span class="px-1.5 py-0.2 rounded-full text-[10px] font-mono font-bold {% if active_brand and active_brand.id == b.id %}bg-blue-800 text-white{% else %}bg-slate-200 text-slate-700{% endif %}">
+                    {{ b.items_count }}
+                </span>
+            </a>
+            {% endfor %}
+
+            <!-- View All Parts Button -->
+            <a href="?view=all" 
+               class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 border
+               {% if not active_brand %}
+                   bg-slate-900 border-slate-900 text-white shadow-sm
+               {% else %}
+                   bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100
+               {% endif %}">
+                <i data-lucide="layers" class="w-3.5 h-3.5"></i>
+                <span>All Combined Spares</span>
+            </a>
+        </div>
+    </div>
+
+    {% if active_brand %}
+    <!-- ACTIVE BRAND INFO BANNER & METRICS -->
+    <div class="bg-gradient-to-r from-blue-900 to-slate-900 rounded-2xl p-5 text-white shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="space-y-1">
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <h2 class="text-xl font-bold tracking-tight">{{ active_brand.name }} Spare Parts Section</h2>
+                <span class="px-2 py-0.5 rounded-full text-[11px] font-bold {% if active_brand.is_common %}bg-amber-400/20 text-amber-200 border border-amber-400/30{% else %}bg-blue-400/20 text-blue-200 border border-blue-400/30{% endif %}">
+                    {% if active_brand.is_common %}Universal Parts{% else %}Brand Specific Spares{% endif %}
+                </span>
+                {% if active_brand.code %}
+                <span class="px-2 py-0.5 rounded-md bg-slate-800/80 text-slate-300 font-mono text-[11px]">{{ active_brand.code }}</span>
+                {% endif %}
+            </div>
+            <p class="text-xs text-slate-300 max-w-2xl leading-relaxed">
+                {{ active_brand.description|default:"Specialized OEM and compatible components for repair and servicing." }}
+            </p>
+        </div>
+
+        <div class="flex items-center gap-3 shrink-0">
+            <!-- Metric 1: Parts Count -->
+            <div class="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-3.5 py-2 text-center min-w-[90px]">
+                <div class="text-[10px] uppercase font-bold text-blue-200 tracking-wider">Parts</div>
+                <div class="text-lg font-bold text-white font-mono">{{ brand_stats.total_items }}</div>
+            </div>
+
+            <!-- Metric 2: Quantity in stock -->
+            <div class="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-3.5 py-2 text-center min-w-[90px]">
+                <div class="text-[10px] uppercase font-bold text-emerald-200 tracking-wider">In Stock</div>
+                <div class="text-lg font-bold text-emerald-300 font-mono">{{ brand_stats.total_qty }}</div>
+            </div>
+
+            <!-- Metric 3: Low stock warning -->
+            <div class="bg-white/10 backdrop-blur-sm border border-white/10 rounded-xl px-3.5 py-2 text-center min-w-[90px]">
+                <div class="text-[10px] uppercase font-bold text-rose-200 tracking-wider">Low Stock</div>
+                <div class="text-lg font-bold {% if brand_stats.low_stock_count > 0 %}text-rose-300 animate-pulse{% else %}text-slate-300{% endif %} font-mono">
+                    {{ brand_stats.low_stock_count }}
+                </div>
+            </div>
+
+            <!-- Full brand history link -->
+            <a href="{% url 'inventory:brand_detail' active_brand.id %}" class="px-3 py-2 rounded-xl bg-white text-slate-900 hover:bg-slate-100 text-xs font-bold transition-all flex items-center gap-1 shrink-0" title="View brand job history and consumed parts">
+                <span>History</span>
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- SEARCH & FILTER BAR -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 p-4 shadow-sm">
+        <form method="GET" class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            {% if active_brand %}
+            <input type="hidden" name="brand" value="{{ active_brand.id }}">
+            {% endif %}
+
+            <div class="relative flex-1 max-w-md">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                </span>
+                <input 
+                    type="text" 
+                    name="search" 
+                    value="{{ search }}" 
+                    placeholder="Search {% if active_brand %}{{ active_brand.name }}{% else %}all{% endif %} parts by name, code, bin, supplier..." 
+                    class="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                >
+            </div>
+
+            <div class="flex items-center gap-2">
+                <button type="submit" name="low_stock" value="{% if low_stock == '1' %}{% else %}1{% endif %}" 
+                        class="px-3 py-2 rounded-xl text-xs font-semibold border flex items-center gap-1.5 transition-colors
+                        {% if low_stock == '1' %}bg-rose-50 border-rose-200 text-rose-700 font-bold{% else %}bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100{% endif %}">
+                    <i data-lucide="alert-triangle" class="w-3.5 h-3.5 text-rose-500"></i>
+                    <span>Low Stock Only</span>
+                </button>
+
+                {% if search or low_stock %}
+                <a href="?{% if active_brand %}brand={{ active_brand.id }}{% endif %}" class="px-2.5 py-2 text-xs text-slate-500 hover:text-slate-700">
+                    Reset
+                </a>
+                {% endif %}
+
+                <button type="submit" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-semibold">
+                    Filter
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- DEDICATED SPARE PARTS TABLE -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-blue-600"></span>
+                <h3 class="text-sm font-bold text-slate-900">
+                    {% if active_brand %}{{ active_brand.name }} Dedicated Parts{% else %}All Spare Parts Inventory{% endif %}
+                    <span class="text-xs text-slate-400 font-normal font-mono">({{ spare_parts.count }} items)</span>
+                </h3>
+            </div>
+            {% if active_brand %}
+            <a href="{% url 'inventory:inventory_create' %}?brand={{ active_brand.id }}" class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                <span>Add Part to {{ active_brand.name }}</span>
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider">
+                    <tr>
+                        <th class="px-4 py-3">Part Details</th>
+                        <th class="px-4 py-3">Part Code</th>
+                        <th class="px-4 py-3">Category</th>
+                        <th class="px-4 py-3 text-center">In Stock</th>
+                        <th class="px-4 py-3 text-center">Min Stock</th>
+                        <th class="px-4 py-3 text-right">Selling Price</th>
+                        <th class="px-4 py-3 text-center">Status</th>
+                        <th class="px-4 py-3 text-right">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 text-slate-700">
+                    {% for item in spare_parts %}
+                    <tr class="hover:bg-blue-50/30 transition-colors">
+                        <td class="px-4 py-3">
+                            <div class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                                <a href="{% url 'inventory:inventory_detail' item.id %}" class="hover:text-blue-600 hover:underline">
+                                    {{ item.part_name }}
+                                </a>
+                                {% if not active_brand and item.brand %}
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700">
+                                    {{ item.brand.name }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% if item.storage_bin %}
+                            <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                                <i data-lucide="map-pin" class="w-3 h-3 text-slate-400"></i>
+                                <span>Bin: <strong class="text-slate-600 font-mono">{{ item.storage_bin }}</strong></span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 font-mono text-slate-500">
+                            {{ item.part_code|default:"-" }}
+                        </td>
+                        <td class="px-4 py-3">
+                            <span class="px-2 py-0.5 rounded-md text-[11px] font-medium bg-slate-100 text-slate-700">
+                                {{ item.category.name|default:"General" }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-3 text-center font-bold text-slate-900 text-sm font-mono">
+                            {{ item.stock_display }}
+                        </td>
+                        <td class="px-4 py-3 text-center text-slate-500 font-mono">
+                            {{ item.min_stock_display }}
+                        </td>
+                        <td class="px-4 py-3 text-right font-bold text-slate-900 font-mono text-sm">
+                            {{ workshop.currency_symbol|default:"Rs." }} {{ item.selling_price|intcomma }}
+                        </td>
+                        <td class="px-4 py-3 text-center">
+                            {% if item.is_low_stock %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">
+                                <span class="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
+                                Low Stock
+                            </span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                Good
+                            </span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-3 text-right">
+                            <div class="inline-flex items-center gap-1.5">
+                                <a href="{% url 'inventory:inventory_detail' item.id %}" class="px-2.5 py-1.5 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-lg font-semibold text-xs transition-colors" title="View details and stock history">
+                                    Stock
+                                </a>
+                                <a href="{% url 'services:job_create' %}?brand={{ item.brand.id }}&part={{ item.id }}" class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-xs transition-colors" title="Book job using this part">
+                                    Use in Job
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="8" class="text-center py-12 text-slate-400">
+                            <div class="max-w-sm mx-auto space-y-3">
+                                <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                                    <i data-lucide="package-open" class="w-6 h-6"></i>
+                                </div>
+                                <div class="font-bold text-slate-700 text-sm">
+                                    No spare parts cataloged for {% if active_brand %}{{ active_brand.name }}{% else %}this filter{% endif %}
+                                </div>
+                                <p class="text-xs text-slate-400">
+                                    Add compressors, fan motors, sensors, capacitors, and pipes specific to this brand.
+                                </p>
+                                {% if active_brand %}
+                                <a href="{% url 'inventory:inventory_create' %}?brand={{ active_brand.id }}" class="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                    <span>Add First {{ active_brand.name }} Part</span>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}

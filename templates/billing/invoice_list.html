@@ -44,20 +44,43 @@
         </div>
     </div>
 
+    <!-- Quick Date Filter Pills -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 p-3 shadow-sm flex items-center gap-2 flex-wrap">
+        <span class="text-[11px] font-bold uppercase text-slate-400 mr-1">Period:</span>
+        <a href="?{% if status_filter %}status={{ status_filter }}&{% endif %}" 
+           class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {% if not date_filter and not from_date and not to_date %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+            All Time
+        </a>
+        <a href="?date=today{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+           class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {% if date_filter == 'today' %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+            Today
+        </a>
+        <a href="?date=week{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+           class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {% if date_filter == 'week' %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+            This Week (7 Days)
+        </a>
+        <a href="?date=month{% if status_filter %}&status={{ status_filter }}{% endif %}" 
+           class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {% if date_filter == 'month' %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+            This Month
+        </a>
+    </div>
+
     <!-- Search & Filter Bar -->
     <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-        <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
             <div class="md:col-span-2">
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">Search Invoices</label>
                 <input 
                     type="text" 
                     name="search" 
                     value="{{ search }}" 
-                    placeholder="Search invoice (INV-...), Job ID, customer name, phone..." 
+                    placeholder="Search invoice (INV-...), Job ID, customer, phone..." 
                     class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 text-slate-800"
                 >
             </div>
 
             <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">Payment Status</label>
                 <select name="status" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 text-slate-800">
                     <option value="">All Payment Statuses</option>
                     <option value="PAID" {% if status_filter == 'PAID' %}selected{% endif %}>Paid</option>
@@ -65,11 +88,31 @@
                 </select>
             </div>
 
-            <div class="flex gap-2">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">From Date</label>
+                <input 
+                    type="date" 
+                    name="from_date" 
+                    value="{{ from_date }}" 
+                    class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800"
+                >
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">To Date</label>
+                <input 
+                    type="date" 
+                    name="to_date" 
+                    value="{{ to_date }}" 
+                    class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800"
+                >
+            </div>
+
+            <div class="flex items-end gap-2">
                 <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-colors">
-                    Filter Invoices
+                    Filter
                 </button>
-                {% if search or status_filter %}
+                {% if search or status_filter or date_filter or from_date or to_date %}
                 <a href="{% url 'billing:invoice_list' %}" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors flex items-center">
                     Reset
                 </a>

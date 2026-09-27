@@ -300,30 +300,55 @@
                 </div>
             </div>
 
-            <!-- Staff Activity Panel (from prompt section 6 & 21) -->
+            <!-- Quick Workshop Actions Panel -->
             <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-3">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider">Live Staff Activity</h3>
-                    <a href="{% url 'core:activity_logs' %}" class="text-xs text-blue-600 hover:underline">Full Log</a>
+                    <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i data-lucide="zap" class="w-4 h-4 text-amber-500"></i>
+                        <span>Quick Operations</span>
+                    </h3>
                 </div>
 
-                <div class="space-y-3">
-                    {% for act in recent_activities|slice:":5" %}
-                    <div class="flex items-start gap-2.5 text-xs">
-                        <div class="w-2 h-2 rounded-full mt-1.5 shrink-0 
-                            {% if act.action_type == 'JOB_UPDATE' %}bg-blue-500
-                            {% elif act.action_type == 'STOCK_UPDATE' %}bg-amber-500
-                            {% elif act.action_type == 'PAYMENT' %}bg-emerald-500
-                            {% else %}bg-slate-400{% endif %}">
+                <div class="grid grid-cols-1 gap-2 pt-1">
+                    <a href="{% url 'services:job_create' %}" class="flex items-center gap-3 p-2.5 rounded-xl bg-blue-50/70 border border-blue-100 hover:bg-blue-100/70 text-blue-900 font-semibold text-xs transition-colors">
+                        <div class="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
                         </div>
-                        <div class="min-w-0 flex-1">
-                            <p class="font-medium text-slate-800 leading-snug">{{ act.action }}</p>
-                            <span class="text-[10px] text-slate-400">{{ act.created_at|date:"h:i A" }} • {{ act.created_at|date:"M d" }}</span>
+                        <div class="min-w-0">
+                            <div>Create New Service Job</div>
+                            <div class="text-[10px] text-blue-600 font-normal">Book repair, installation or maintenance</div>
                         </div>
-                    </div>
-                    {% empty %}
-                    <p class="text-xs text-slate-400 py-2">No recent staff actions recorded.</p>
-                    {% endfor %}
+                    </a>
+
+                    <a href="{% url 'inventory:brand_list' %}" class="flex items-center gap-3 p-2.5 rounded-xl bg-slate-50 border border-slate-200 hover:bg-slate-100 text-slate-800 font-semibold text-xs transition-colors">
+                        <div class="w-7 h-7 rounded-lg bg-slate-800 text-white flex items-center justify-center shrink-0">
+                            <i data-lucide="tag" class="w-4 h-4"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div>Brand Spare Parts</div>
+                            <div class="text-[10px] text-slate-500 font-normal">Browse Samsung, LG, Daikin parts</div>
+                        </div>
+                    </a>
+
+                    <a href="{% url 'billing:warranty_claims' %}" class="flex items-center gap-3 p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-100 hover:bg-emerald-100/70 text-emerald-900 font-semibold text-xs transition-colors">
+                        <div class="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
+                            <i data-lucide="shield-check" class="w-4 h-4"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div>Dealer Warranty (WTY)</div>
+                            <div class="text-[10px] text-emerald-700 font-normal">Track claims & export to Excel</div>
+                        </div>
+                    </a>
+
+                    <a href="{% url 'billing:credit_ledger' %}" class="flex items-center gap-3 p-2.5 rounded-xl bg-amber-50/70 border border-amber-100 hover:bg-amber-100/70 text-amber-900 font-semibold text-xs transition-colors">
+                        <div class="w-7 h-7 rounded-lg bg-amber-600 text-white flex items-center justify-center shrink-0">
+                            <i data-lucide="wallet" class="w-4 h-4"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div>Due / Udharo Khata</div>
+                            <div class="text-[10px] text-amber-700 font-normal">Pending client receivables</div>
+                        </div>
+                    </a>
                 </div>
             </div>
 

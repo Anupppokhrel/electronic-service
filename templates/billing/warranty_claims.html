@@ -2,7 +2,7 @@
 {% load humanize %}
 {% load nepali_tags %}
 
-{% block title %}Dealer Warranty Claims (WTY){% endblock %}
+{% block title %}Company Warranty Claims & Excel Export{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -11,20 +11,27 @@
         <div>
             <div class="inline-flex items-center gap-2 mb-1">
                 <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-900 border border-blue-200">
-                    कम्पनी वारेन्टी (WTY Claims)
+                    कम्पनी वारेन्टी (Company Warranty Claims)
                 </span>
             </div>
-            <h1 class="text-xl font-bold text-slate-900 tracking-tight">Dealer Warranty Claims Hub (WTY)</h1>
-            <p class="text-xs text-slate-500 mt-0.5">Track warranty repairs authorized by brand dealers, reimbursement submissions, and claim settlement payouts</p>
+            <h1 class="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">Dealer Warranty Claims Hub (WTY)</h1>
+            <p class="text-xs text-slate-500 mt-0.5">Track warranty repairs authorized by brand dealers, claim status, and export company reimbursement spreadsheets</p>
         </div>
-        <div class="flex items-center gap-2">
-            <a href="{% url 'billing:dealer_list' %}" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm flex items-center gap-1.5">
-                <i data-lucide="store" class="w-4 h-4 text-purple-600"></i>
-                <span>Manage Dealers</span>
+        <div class="flex items-center gap-2 flex-wrap">
+            <!-- 1-Click Excel Export Button -->
+            <a href="{% url 'billing:warranty_claims_export_excel' %}?dealer={{ selected_dealer }}&status={{ selected_status }}&search={{ search }}&date={{ date_filter }}&from_date={{ from_date }}&to_date={{ to_date }}" 
+               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                <i data-lucide="download" class="w-4 h-4"></i>
+                <span>📥 Export Excel (.xlsx)</span>
             </a>
-            <a href="{% url 'billing:credit_ledger' %}" class="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm flex items-center gap-1.5">
-                <i data-lucide="credit-card" class="w-4 h-4 text-amber-600"></i>
-                <span>Due / Udharo Khata</span>
+
+            <a href="{% url 'billing:dealer_list' %}" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm flex items-center gap-1.5">
+                <i data-lucide="store" class="w-4 h-4 text-purple-600"></i>
+                <span>Dealers</span>
+            </a>
+            <a href="{% url 'billing:credit_ledger' %}" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 shadow-sm flex items-center gap-1.5">
+                <i data-lucide="wallet" class="w-4 h-4 text-amber-600"></i>
+                <span>Due Khata</span>
             </a>
         </div>
     </div>
@@ -32,78 +39,148 @@
     <!-- Summary Metrics -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div class="bg-white p-5 rounded-2xl border border-blue-200 shadow-sm bg-gradient-to-br from-white to-blue-50/40">
-            <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Total Warranty Value</span>
-            <div class="mt-2 text-3xl font-extrabold text-blue-800 font-mono">
+            <span class="text-xs font-bold uppercase tracking-wider text-blue-700">Total Warranty Claim Value</span>
+            <div class="mt-2 text-2xl sm:text-3xl font-extrabold text-blue-800 font-mono">
                 {{ workshop.currency_symbol|default:"Rs." }} {{ total_claim_amount|intcomma }}
             </div>
-            <p class="text-xs text-blue-900 mt-1">{{ claims.count }} total brand warranty jobs</p>
+            <p class="text-xs text-blue-900 mt-1">{{ claims.count }} total warranty job claims</p>
         </div>
 
         <div class="bg-white p-5 rounded-2xl border border-amber-200 shadow-sm bg-gradient-to-br from-white to-amber-50/40">
-            <span class="text-xs font-bold uppercase tracking-wider text-amber-700">Pending Dealer Payout</span>
-            <div class="mt-2 text-3xl font-bold text-amber-700 font-mono">
+            <span class="text-xs font-bold uppercase tracking-wider text-amber-700">Pending Dealer Reimbursement</span>
+            <div class="mt-2 text-2xl sm:text-3xl font-bold text-amber-700 font-mono">
                 {{ workshop.currency_symbol|default:"Rs." }} {{ pending_claim_amount|intcomma }}
             </div>
-            <p class="text-xs text-amber-900 mt-1">Awaiting dealer reimbursement</p>
+            <p class="text-xs text-amber-900 mt-1">Awaiting company payout</p>
         </div>
 
         <div class="bg-white p-5 rounded-2xl border border-emerald-200 shadow-sm bg-gradient-to-br from-white to-emerald-50/40">
             <span class="text-xs font-bold uppercase tracking-wider text-emerald-700">Settled by Dealers</span>
-            <div class="mt-2 text-3xl font-bold text-emerald-700 font-mono">
+            <div class="mt-2 text-2xl sm:text-3xl font-bold text-emerald-700 font-mono">
                 {{ workshop.currency_symbol|default:"Rs." }} {{ settled_claim_amount|intcomma }}
             </div>
             <p class="text-xs text-emerald-900 mt-1">Successfully reimbursed</p>
         </div>
     </div>
 
-    <!-- Filter & Search Bar -->
+    <!-- Quick Date Filter Pills -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 p-3 shadow-sm flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex items-center gap-2 flex-wrap">
+            <span class="text-[11px] font-bold uppercase text-slate-400 mr-1">Period:</span>
+            <a href="?{% if selected_dealer %}dealer={{ selected_dealer }}&{% endif %}{% if selected_status %}status={{ selected_status }}&{% endif %}" 
+               class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {% if not date_filter and not from_date and not to_date %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                All Time
+            </a>
+            <a href="?date=today{% if selected_dealer %}&dealer={{ selected_dealer }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" 
+               class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {% if date_filter == 'today' %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                Today
+            </a>
+            <a href="?date=week{% if selected_dealer %}&dealer={{ selected_dealer }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" 
+               class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {% if date_filter == 'week' %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                This Week (7 Days)
+            </a>
+            <a href="?date=month{% if selected_dealer %}&dealer={{ selected_dealer }}{% endif %}{% if selected_status %}&status={{ selected_status }}{% endif %}" 
+               class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all {% if date_filter == 'month' %}bg-blue-600 text-white shadow-sm{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200{% endif %}">
+                This Month
+            </a>
+        </div>
+
+        <a href="{% url 'billing:warranty_claims_export_excel' %}?dealer={{ selected_dealer }}&status={{ selected_status }}&search={{ search }}&date={{ date_filter }}&from_date={{ from_date }}&to_date={{ to_date }}" 
+           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-colors">
+            <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+            <span>Download Excel</span>
+        </a>
+    </div>
+
+    <!-- Advanced Filter & Date Range Bar -->
     <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
-        <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3">
             <div class="md:col-span-2">
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">Search Claims</label>
                 <input 
                     type="text" 
                     name="search" 
                     value="{{ search }}" 
-                    placeholder="Search by dealer, customer, job ID, or voucher..." 
+                    placeholder="Search dealer, customer, phone, Job ID..." 
                     class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600/20 text-slate-800"
                 >
             </div>
 
             <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">Company / Dealer</label>
                 <select name="dealer" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl">
-                    <option value="">All Brand Dealers</option>
+                    <option value="">All Brand Companies</option>
                     {% for d in dealers %}
                     <option value="{{ d.id }}" {% if selected_dealer == d.id|stringformat:"s" %}selected{% endif %}>{{ d.name }}</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <div class="flex gap-2">
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">Claim Status</label>
                 <select name="status" class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl">
-                    <option value="">All Claim Statuses</option>
+                    <option value="">All Statuses</option>
                     <option value="PENDING" {% if selected_status == 'PENDING' %}selected{% endif %}>Pending Submission</option>
                     <option value="SUBMITTED" {% if selected_status == 'SUBMITTED' %}selected{% endif %}>Submitted to Dealer</option>
                     <option value="SETTLED" {% if selected_status == 'SETTLED' %}selected{% endif %}>Settled / Reimbursed</option>
                 </select>
-                <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm">
-                    Filter
-                </button>
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">From Date</label>
+                <input 
+                    type="date" 
+                    name="from_date" 
+                    value="{{ from_date }}" 
+                    class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800"
+                >
+            </div>
+
+            <div>
+                <label class="block text-[11px] font-bold text-slate-500 mb-1">To Date</label>
+                <div class="flex gap-2">
+                    <input 
+                        type="date" 
+                        name="to_date" 
+                        value="{{ to_date }}" 
+                        class="w-full px-3 py-2 text-xs sm:text-sm bg-slate-50 border border-slate-200 rounded-xl focus:bg-white text-slate-800"
+                    >
+                    <button type="submit" class="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow-sm shrink-0">
+                        Filter
+                    </button>
+                </div>
             </div>
         </form>
     </div>
 
     <!-- Warranty Claims Table -->
     <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-600"></span>
+                <h3 class="text-sm font-bold text-slate-900">
+                    Warranty Claim Records 
+                    <span class="text-xs text-slate-400 font-mono font-normal">({{ claims.count }} claims listed)</span>
+                </h3>
+            </div>
+            <a href="{% url 'billing:warranty_claims_export_excel' %}?dealer={{ selected_dealer }}&status={{ selected_status }}&search={{ search }}&date={{ date_filter }}&from_date={{ from_date }}&to_date={{ to_date }}" 
+               class="text-xs font-bold text-emerald-700 hover:text-emerald-900 flex items-center gap-1">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                <span>Export this table to Excel</span>
+            </a>
+        </div>
+
         <div class="overflow-x-auto">
-            <table class="w-full text-left text-sm">
-                <thead class="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50/80 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <tr>
                         <th class="px-4 py-3">Voucher & Job ID</th>
-                        <th class="px-4 py-3">Brand & Dealer (Who Pays)</th>
-                        <th class="px-4 py-3">Customer & Appliance</th>
+                        <th class="px-4 py-3">Dealer / Company</th>
+                        <th class="px-4 py-3">Customer Details</th>
+                        <th class="px-4 py-3">Appliance & Service</th>
                         <th class="px-4 py-3">Date (AD & BS)</th>
                         <th class="px-4 py-3 text-right">Claim Amount</th>
-                        <th class="px-4 py-3 text-center">Claim Status</th>
+                        <th class="px-4 py-3 text-center">Status</th>
                         <th class="px-4 py-3 text-right">Action</th>
                     </tr>
                 </thead>
@@ -111,30 +188,43 @@
                     {% for claim in claims %}
                     <tr class="hover:bg-blue-50/20 transition-colors">
                         <td class="px-4 py-3.5">
-                            <a href="{% url 'billing:invoice_detail' claim.id %}" class="font-bold text-blue-700 hover:underline">
+                            <a href="{% url 'billing:invoice_detail' claim.id %}" class="font-bold text-blue-700 hover:underline text-sm">
                                 {{ claim.invoice_number }}
                             </a>
-                            <div class="text-xs text-slate-400 font-mono">{{ claim.job.job_number }}</div>
+                            <div class="text-[11px] text-slate-500 font-mono">
+                                Job: <a href="{% url 'services:job_detail' claim.job.id %}" class="hover:underline font-semibold">{{ claim.job.job_number }}</a>
+                            </div>
                         </td>
 
                         <td class="px-4 py-3.5 text-xs">
                             {% if claim.dealer %}
                             <div class="font-bold text-slate-900">{{ claim.dealer.name }}</div>
-                            <div class="text-slate-500 text-[11px]">{{ claim.dealer.address }} • {{ claim.dealer.phone|default:"No phone" }}</div>
+                            <div class="text-slate-500 text-[11px]">{{ claim.dealer.phone|default:"Authorized Dealer" }}</div>
                             {% else %}
-                            <span class="text-slate-500 font-semibold">{{ claim.ac_brand }} Authorized Dealer</span>
+                            <span class="text-slate-700 font-semibold">{{ claim.job.ac_brand_name|default:"General" }} Authorized Dealer</span>
                             {% endif %}
                         </td>
 
                         <td class="px-4 py-3.5 text-xs">
-                            <div class="font-semibold text-slate-800">{{ claim.customer.name }}</div>
-                            <div class="text-slate-500 text-[11px]">
-                                {{ claim.job.get_appliance_type_display }} • {{ claim.job.get_job_type_display }}
+                            <div class="font-bold text-slate-900">{{ claim.customer.name }}</div>
+                            <div class="text-slate-500 font-mono text-[11px]">{{ claim.customer.phone }}</div>
+                            {% if claim.customer.address %}
+                            <div class="text-[10px] text-slate-400 truncate max-w-[140px]">{{ claim.customer.address }}</div>
+                            {% endif %}
+                        </td>
+
+                        <td class="px-4 py-3.5 text-xs">
+                            <div class="font-semibold text-slate-800">
+                                {{ claim.job.get_appliance_type_display }}
+                                {% if claim.job.ac_brand_name %}
+                                <span class="text-slate-500">({{ claim.job.ac_brand_name }})</span>
+                                {% endif %}
                             </div>
+                            <div class="text-[11px] text-slate-500">{{ claim.job.get_job_type_display }}</div>
                         </td>
 
                         <td class="px-4 py-3.5 text-xs text-slate-600">
-                            <div>{{ claim.created_at|date:"d M Y" }}</div>
+                            <div class="font-mono">{{ claim.created_at|date:"Y-m-d" }}</div>
                             <div class="text-[11px] text-blue-700 font-medium">{{ claim.created_at|bs_date }}</div>
                         </td>
 
@@ -144,16 +234,19 @@
 
                         <td class="px-4 py-3.5 text-center">
                             {% if claim.dealer_claim_status == 'SETTLED' %}
-                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                Settled / Paid
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                Settled
                             </span>
                             {% elif claim.dealer_claim_status == 'SUBMITTED' %}
-                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
-                                Submitted to Dealer
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-100 text-blue-800 border border-blue-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
+                                Submitted
                             </span>
                             {% else %}
-                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                Pending Submission
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                <span class="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                                Pending
                             </span>
                             {% endif %}
                         </td>
@@ -181,10 +274,16 @@
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center py-12 text-slate-400">
-                            <i data-lucide="shield" class="w-8 h-8 mx-auto text-slate-300 mb-2"></i>
-                            <div class="text-sm font-semibold text-slate-700">No Warranty Claims Found</div>
-                            <div class="text-xs text-slate-400 mt-1">Jobs marked as Company Warranty (WTY) will appear here for dealer reimbursement tracking.</div>
+                        <td colspan="8" class="text-center py-12 text-slate-400">
+                            <div class="max-w-sm mx-auto space-y-2">
+                                <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                                    <i data-lucide="shield" class="w-6 h-6"></i>
+                                </div>
+                                <div class="font-bold text-slate-700 text-sm">No Warranty Claims Found</div>
+                                <p class="text-xs text-slate-400">
+                                    Jobs created with Dealer Warranty enabled will automatically appear here for company reimbursement.
+                                </p>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
