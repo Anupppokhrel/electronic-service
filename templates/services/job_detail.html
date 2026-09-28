@@ -499,29 +499,98 @@
 
                 <!-- Add Part Form (Inventory Automation) -->
                 {% if job.status != 'CLOSED' %}
-                <div class="pt-3 border-t border-slate-100 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200">
-                    <span class="text-xs font-bold text-slate-800 block mb-2">Add Spare Part from Stock:</span>
+                <div class="pt-3 border-t border-slate-100 bg-slate-50/80 p-3.5 rounded-xl border border-slate-200 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="text-xs font-bold text-slate-800">Add Spare Part from Stock:</span>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-100 text-blue-900 border border-blue-200">
+                                    🏷️ {{ brand_name|default:"General Brand" }}
+                                </span>
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-cyan-100 text-cyan-900 border border-cyan-200">
+                                    {% if job.appliance_type == 'AC' %}❄️ Air Conditioner
+                                    {% elif job.appliance_type == 'REFRIGERATOR' %}🧊 Refrigerator
+                                    {% elif job.appliance_type == 'WASHING_MACHINE' %}🧺 Washing Machine
+                                    {% elif job.appliance_type == 'COOLER' %}💨 Air Cooler
+                                    {% else %}{{ job.get_appliance_type_display }}{% endif %}
+                                </span>
+                            </div>
+                            <p class="text-[11px] text-slate-500 mt-0.5">
+                                Spares strictly filtered for <strong>{{ brand_name|default:"selected brand" }}</strong> &bull; <strong>{{ job.get_appliance_type_display }}</strong>
+                            </p>
+                        </div>
+
+                        {% if common_parts.exists and not is_generic_brand %}
+                        <div class="flex items-center gap-1.5 self-start sm:self-center">
+                            <button type="button" id="btn-toggle-common" onclick="toggleCommonParts()" class="px-2.5 py-1 text-[11px] font-semibold rounded-lg border bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center gap-1 shadow-2xs">
+                                <i data-lucide="layers" class="w-3 h-3 text-slate-400"></i>
+                                <span id="toggle-common-text">+ Show Universal Supplies ({{ common_parts.count }})</span>
+                            </button>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if not brand_parts.exists and not common_parts.exists %}
+                    <div class="p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="alert-circle" class="w-4 h-4 text-amber-600 shrink-0"></i>
+                            <span>No spare parts currently cataloged for <strong>{{ brand_name }}</strong> ({{ job.get_appliance_type_display }}).</span>
+                        </div>
+                        {% if not request.user.staff_profile.is_technician %}
+                        <a href="{% url 'inventory:inventory_create' %}?{% if brand_obj %}brand={{ brand_obj.id }}&{% endif %}appliance_type={{ job.appliance_type }}" class="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-bold text-xs shrink-0 transition-colors">
+                            + Add Part to Catalog
+                        </a>
+                        {% endif %}
+                    </div>
+                    {% else %}
                     <form method="POST" action="{% url 'services:job_add_part' job.id %}" class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
                         {% csrf_token %}
                         <div class="sm:col-span-2">
-                            <select name="inventory_item" id="part-select" required class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg text-slate-800">
-                                <option value="">-- Choose Part from Workshop Inventory --</option>
-                                {% for itm in available_parts %}
-                                <option value="{{ itm.id }}" data-price="{{ itm.selling_price }}" data-unit="{{ itm.unit }}" data-stock="{{ itm.quantity }}">
-                                    {{ itm.part_name }} (Stock: {{ itm.stock_display }}) - {{ workshop.currency_symbol|default:"Rs." }} {{ itm.selling_price|intcomma }}
-                                </option>
-                                {% endfor %}
+                            <select name="inventory_item" id="part-select" required class="w-full px-2.5 py-2 text-xs bg-white border border-slate-200 rounded-lg text-slate-800 font-medium focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600">
+                                <option value="">-- Select {{ brand_name|default:"Compatible" }} ({{ job.get_appliance_type_display }}) Part --</option>
+                                
+                                {% if brand_parts.exists %}
+                                <optgroup label="⭐ {{ brand_name }} Dedicated {{ job.get_appliance_type_display }} Spares ({{ brand_parts.count }})">
+                                    {% for itm in brand_parts %}
+                                    <option value="{{ itm.id }}" data-price="{{ itm.selling_price }}" data-unit="{{ itm.unit }}" data-stock="{{ itm.quantity }}">
+                                        {{ itm.part_name }} (Stock: {{ itm.stock_display }}) - {{ workshop.currency_symbol|default:"Rs." }} {{ itm.selling_price|intcomma }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endif %}
+
+                                {% if is_generic_brand and common_parts.exists %}
+                                <optgroup label="⚙️ {{ job.get_appliance_type_display }} Universal Spares & Consumables">
+                                    {% for itm in common_parts %}
+                                    <option value="{{ itm.id }}" data-price="{{ itm.selling_price }}" data-unit="{{ itm.unit }}" data-stock="{{ itm.quantity }}">
+                                        {{ itm.part_name }} (Stock: {{ itm.stock_display }}) - {{ workshop.currency_symbol|default:"Rs." }} {{ itm.selling_price|intcomma }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endif %}
+
+                                {% if not is_generic_brand and common_parts.exists %}
+                                <optgroup id="optgroup-common-supplies" label="⚙️ Universal / Common Supplies ({{ common_parts.count }})" class="hidden" style="display: none;">
+                                    {% for itm in common_parts %}
+                                    <option value="{{ itm.id }}" data-price="{{ itm.selling_price }}" data-unit="{{ itm.unit }}" data-stock="{{ itm.quantity }}">
+                                        {{ itm.part_name }} (Stock: {{ itm.stock_display }}) - {{ workshop.currency_symbol|default:"Rs." }} {{ itm.selling_price|intcomma }}
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endif %}
                             </select>
                         </div>
                         <div>
-                            <input type="number" step="0.5" name="quantity" value="1" min="0.5" required placeholder="Qty" class="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-lg font-mono">
+                            <input type="number" step="0.5" name="quantity" value="1" min="0.5" required placeholder="Qty" class="w-full px-2.5 py-2 text-xs bg-white border border-slate-200 rounded-lg font-mono focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600">
                         </div>
                         <div>
-                            <button type="submit" class="w-full py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors">
-                                + Deduct Stock & Add
+                            <button type="submit" class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors flex items-center justify-center gap-1">
+                                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                <span>Deduct & Add</span>
                             </button>
                         </div>
                     </form>
+                    {% endif %}
                 </div>
                 {% endif %}
             </div>
@@ -814,6 +883,21 @@ function showQR(type) {
             btn.className = "flex-1 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all qr-tab-btn";
         }
     });
+}
+
+function toggleCommonParts() {
+    const optgroup = document.getElementById('optgroup-common-supplies');
+    const btnText = document.getElementById('toggle-common-text');
+    if (!optgroup) return;
+    if (optgroup.style.display === 'none' || optgroup.classList.contains('hidden')) {
+        optgroup.style.display = '';
+        optgroup.classList.remove('hidden');
+        if (btnText) btnText.textContent = '- Hide Universal Supplies';
+    } else {
+        optgroup.style.display = 'none';
+        optgroup.classList.add('hidden');
+        if (btnText) btnText.textContent = '+ Show Universal Supplies ({{ common_parts.count }})';
+    }
 }
 </script>
 {% endblock %}

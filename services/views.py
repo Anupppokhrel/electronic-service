@@ -320,17 +320,48 @@ def job_detail_view(request, pk):
         except Exception:
             invoice = None
 
-    # Available inventory items for adding parts (Brand-specific & Appliance-specific or Common)
-    brand_name = job.ac_brand_name or (job.brand.name if job.brand else "")
-    appliance_type = job.appliance_type or 'ALL'
+    # Spare parts strictly filtered by the selected company (brand) and selected appliance
+    brand_obj = job.brand or (job.ac_unit.brand if job.ac_unit else None)
+    brand_name = job.ac_brand_name or (brand_obj.name if brand_obj else "")
+    appliance_type = job.appliance_type or (job.ac_unit.appliance_type if job.ac_unit else "AC")
 
-    available_parts = InventoryItem.objects.filter(business=workshop).filter(
-        Q(appliance_type=appliance_type) | Q(appliance_type='ALL')
+    is_generic_brand = False
+    if brand_obj and (brand_obj.is_common or brand_obj.name.lower() == 'common'):
+        is_generic_brand = True
+    elif not brand_obj and (not brand_name or brand_name.lower() in ['common', 'multi-brand', 'generic']):
+        is_generic_brand = True
+
+    # 1. Dedicated brand parts for this specific company AND device
+    brand_q = Q()
+    if brand_obj:
+        brand_q |= Q(brand=brand_obj)
+    if brand_name:
+        brand_q |= Q(brand__name__iexact=brand_name)
+
+    if not is_generic_brand and (brand_obj or brand_name):
+        brand_parts = InventoryItem.objects.filter(
+            business=workshop,
+            appliance_type=appliance_type
+        ).filter(brand_q).order_by('part_name')
+    else:
+        brand_parts = InventoryItem.objects.none()
+
+    # 2. Universal / common consumables relevant to this appliance
+    common_parts = InventoryItem.objects.filter(
+        business=workshop
     ).filter(
-        Q(inventory_type='COMMON') | Q(brand__name__iexact=brand_name) | Q(brand=job.brand)
+        Q(inventory_type='COMMON') | Q(brand__is_common=True) | Q(brand__name__iexact='Common')
+    ).filter(
+        Q(appliance_type=appliance_type) | Q(appliance_type='ALL')
     ).order_by('part_name')
-    if not available_parts.exists():
-        available_parts = InventoryItem.objects.filter(business=workshop).order_by('part_name')
+
+    # Available parts: strictly brand parts by default if brand is specified, or common parts if generic
+    if brand_parts.exists():
+        available_parts = brand_parts
+    elif is_generic_brand:
+        available_parts = common_parts
+    else:
+        available_parts = InventoryItem.objects.none()
 
     # Static Payment QR codes
     payment_qrs = PaymentQR.objects.filter(business=workshop, is_active=True).order_by('display_order')
@@ -378,6 +409,11 @@ def job_detail_view(request, pk):
         'work_logs': work_logs,
         'parts_used': parts_used,
         'available_parts': available_parts,
+        'brand_parts': brand_parts,
+        'common_parts': common_parts,
+        'brand_name': brand_name,
+        'brand_obj': brand_obj,
+        'is_generic_brand': is_generic_brand,
         'payment_qrs': payment_qrs,
         'technicians': technicians,
         'dealers': Dealer.objects.filter(business=workshop, is_active=True),
