@@ -15,6 +15,7 @@ def inventory_list_view(request):
     brand_id = request.GET.get('brand')
     inv_type = request.GET.get('type')
     low_stock = request.GET.get('low_stock')
+    device_filter = request.GET.get('device', '').strip() or request.GET.get('appliance_type', '').strip()
 
     items = InventoryItem.objects.filter(business=workshop).select_related('brand', 'category')
 
@@ -30,11 +31,31 @@ def inventory_list_view(request):
         items = items.filter(brand_id=brand_id)
     if inv_type:
         items = items.filter(inventory_type=inv_type)
+    if device_filter:
+        if device_filter == 'UNIVERSAL' or device_filter == 'ALL':
+            items = items.filter(appliance_type='ALL')
+        else:
+            items = items.filter(Q(appliance_type=device_filter) | Q(appliance_type='ALL'))
+
     if low_stock == '1':
         items = items.filter(quantity__lte=F('minimum_stock'))
 
     categories = Category.objects.filter(business=workshop)
     brands = Brand.objects.filter(business=workshop)
+
+    # Base counts for device filters based on active brand if selected
+    base_qs = InventoryItem.objects.filter(business=workshop)
+    if brand_id:
+        base_qs = base_qs.filter(brand_id=brand_id)
+
+    device_counts = {
+        'ALL_DEVICES': base_qs.count(),
+        'AC': base_qs.filter(Q(appliance_type='AC') | Q(appliance_type='ALL')).count(),
+        'REFRIGERATOR': base_qs.filter(Q(appliance_type='REFRIGERATOR') | Q(appliance_type='ALL')).count(),
+        'WASHING_MACHINE': base_qs.filter(Q(appliance_type='WASHING_MACHINE') | Q(appliance_type='ALL')).count(),
+        'COOLER': base_qs.filter(Q(appliance_type='COOLER') | Q(appliance_type='ALL')).count(),
+        'UNIVERSAL': base_qs.filter(appliance_type='ALL').count(),
+    }
 
     # Low stock counter
     total_low_stock = InventoryItem.objects.filter(
@@ -50,6 +71,9 @@ def inventory_list_view(request):
         'selected_category': category_id,
         'selected_brand': brand_id,
         'selected_type': inv_type,
+        'selected_device': device_filter,
+        'device_counts': device_counts,
+        'appliance_choices': InventoryItem.APPLIANCE_CHOICES,
         'low_stock_filter': low_stock,
         'total_low_stock': total_low_stock,
     }
@@ -76,6 +100,7 @@ def inventory_create_view(request):
 
     if request.method == 'POST':
         part_name = request.POST.get('part_name', '').strip()
+        appliance_type = request.POST.get('appliance_type', 'ALL').strip()
         part_code = request.POST.get('part_code', '').strip()
         category_id = request.POST.get('category')
         brand_id = request.POST.get('brand')
@@ -91,11 +116,17 @@ def inventory_create_view(request):
 
         if not part_name:
             messages.error(request, "Part name is required.")
-            return render(request, 'inventory/inventory_form.html', {'categories': categories, 'brands': brands, 'action': 'Add'})
+            return render(request, 'inventory/inventory_form.html', {
+                'categories': categories,
+                'brands': brands,
+                'appliance_choices': InventoryItem.APPLIANCE_CHOICES,
+                'action': 'Add'
+            })
 
         item = InventoryItem.objects.create(
             business=workshop,
             part_name=part_name,
+            appliance_type=appliance_type,
             part_code=part_code,
             category_id=category_id if category_id else None,
             brand_id=brand_id if brand_id else None,
@@ -125,14 +156,24 @@ def inventory_create_view(request):
         ActivityLog.objects.create(
             business=workshop,
             user=request.user,
-            action=f"Added inventory item: {item.part_name}",
+            action=f"Added inventory item: {item.part_name} ({item.get_appliance_type_display()})",
             action_type="STOCK_UPDATE",
             details=f"Added {item.part_name} with stock {item.quantity} {item.unit}"
         )
         messages.success(request, f"Item {item.part_name} added to inventory.")
         return redirect('inventory:inventory_detail', pk=item.pk)
 
-    return render(request, 'inventory/inventory_form.html', {'categories': categories, 'brands': brands, 'action': 'Add'})
+    preselected_brand_id = request.GET.get('brand')
+    preselected_device = request.GET.get('device') or request.GET.get('appliance_type')
+
+    return render(request, 'inventory/inventory_form.html', {
+        'categories': categories,
+        'brands': brands,
+        'appliance_choices': InventoryItem.APPLIANCE_CHOICES,
+        'preselected_brand_id': preselected_brand_id,
+        'preselected_device': preselected_device,
+        'action': 'Add'
+    })
 
 @admin_required
 def inventory_edit_view(request, pk):
@@ -142,6 +183,7 @@ def inventory_edit_view(request, pk):
 
     if request.method == 'POST':
         item.part_name = request.POST.get('part_name', item.part_name).strip()
+        item.appliance_type = request.POST.get('appliance_type', item.appliance_type).strip()
         item.part_code = request.POST.get('part_code', item.part_code).strip()
         item.category_id = request.POST.get('category') or None
         item.brand_id = request.POST.get('brand') or None
@@ -158,7 +200,13 @@ def inventory_edit_view(request, pk):
         messages.success(request, f"Inventory item {item.part_name} updated.")
         return redirect('inventory:inventory_detail', pk=item.pk)
 
-    return render(request, 'inventory/inventory_form.html', {'item': item, 'categories': categories, 'brands': brands, 'action': 'Edit'})
+    return render(request, 'inventory/inventory_form.html', {
+        'item': item,
+        'categories': categories,
+        'brands': brands,
+        'appliance_choices': InventoryItem.APPLIANCE_CHOICES,
+        'action': 'Edit'
+    })
 
 @admin_required
 def inventory_adjust_stock_view(request, pk):
@@ -231,6 +279,7 @@ def brand_list_view(request):
     ).order_by('name')
 
     selected_brand_id = request.GET.get('brand', '')
+    device_filter = request.GET.get('device', '').strip() or request.GET.get('appliance_type', '').strip()
     search = request.GET.get('search', '').strip()
     low_stock = request.GET.get('low_stock', '')
 
@@ -252,6 +301,12 @@ def brand_list_view(request):
         spare_parts = InventoryItem.objects.filter(
             business=workshop
         ).select_related('brand', 'category')
+
+    if device_filter:
+        if device_filter == 'UNIVERSAL' or device_filter == 'ALL':
+            spare_parts = spare_parts.filter(appliance_type='ALL')
+        else:
+            spare_parts = spare_parts.filter(Q(appliance_type=device_filter) | Q(appliance_type='ALL'))
 
     if search:
         spare_parts = spare_parts.filter(
@@ -276,10 +331,23 @@ def brand_list_view(request):
             'total_qty': total_qty,
         }
 
+    # Device counts in this brand scope
+    base_parts = active_brand.inventory_items.all() if active_brand else InventoryItem.objects.filter(business=workshop)
+    device_counts = {
+        'ALL': base_parts.count(),
+        'AC': base_parts.filter(Q(appliance_type='AC') | Q(appliance_type='ALL')).count(),
+        'REFRIGERATOR': base_parts.filter(Q(appliance_type='REFRIGERATOR') | Q(appliance_type='ALL')).count(),
+        'WASHING_MACHINE': base_parts.filter(Q(appliance_type='WASHING_MACHINE') | Q(appliance_type='ALL')).count(),
+        'COOLER': base_parts.filter(Q(appliance_type='COOLER') | Q(appliance_type='ALL')).count(),
+    }
+
     context = {
         'brands': brands,
         'active_brand': active_brand,
         'selected_brand_id': str(active_brand.id) if active_brand else '',
+        'selected_device': device_filter,
+        'device_counts': device_counts,
+        'appliance_choices': InventoryItem.APPLIANCE_CHOICES,
         'spare_parts': spare_parts,
         'search': search,
         'low_stock': low_stock,

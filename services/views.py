@@ -320,10 +320,14 @@ def job_detail_view(request, pk):
         except Exception:
             invoice = None
 
-    # Available inventory items for adding parts (Brand-specific for this brand OR Common)
-    brand_obj = job.ac_unit.brand if job.ac_unit else None
+    # Available inventory items for adding parts (Brand-specific & Appliance-specific or Common)
+    brand_name = job.ac_brand_name or (job.brand.name if job.brand else "")
+    appliance_type = job.appliance_type or 'ALL'
+
     available_parts = InventoryItem.objects.filter(business=workshop).filter(
-        Q(inventory_type='COMMON') | Q(brand__name__iexact=job.ac_brand_name)
+        Q(appliance_type=appliance_type) | Q(appliance_type='ALL')
+    ).filter(
+        Q(inventory_type='COMMON') | Q(brand__name__iexact=brand_name) | Q(brand=job.brand)
     ).order_by('part_name')
     if not available_parts.exists():
         available_parts = InventoryItem.objects.filter(business=workshop).order_by('part_name')
