@@ -28,9 +28,13 @@ def job_list_view(request):
 
     jobs = ServiceJob.objects.filter(business=workshop).select_related('customer', 'technician', 'ac_unit', 'brand', 'warranty_dealer')
 
+    is_tech = hasattr(request.user, 'staff_profile') and request.user.staff_profile.is_technician
+    if is_tech:
+        jobs = jobs.filter(technician=request.user)
+
     if status_filter:
         jobs = jobs.filter(status=status_filter)
-    if tech_id:
+    if tech_id and not is_tech:
         jobs = jobs.filter(technician_id=tech_id)
     if brand_id:
         jobs = jobs.filter(Q(brand_id=brand_id) | Q(ac_unit__brand_id=brand_id) | Q(ac_brand_name__iexact=brand_id))
@@ -66,17 +70,21 @@ def job_list_view(request):
     jobs = jobs.order_by('-created_at')
 
     # Status counts for tabs
+    base_counts_qs = ServiceJob.objects.filter(business=workshop)
+    if is_tech:
+        base_counts_qs = base_counts_qs.filter(technician=request.user)
+
     counts = {
-        'all': ServiceJob.objects.filter(business=workshop).count(),
-        'NEW': ServiceJob.objects.filter(business=workshop, status='NEW').count(),
-        'ASSIGNED': ServiceJob.objects.filter(business=workshop, status='ASSIGNED').count(),
-        'IN_PROGRESS': ServiceJob.objects.filter(business=workshop, status='IN_PROGRESS').count(),
-        'WAITING_FOR_PARTS': ServiceJob.objects.filter(business=workshop, status='WAITING_FOR_PARTS').count(),
-        'COMPLETED': ServiceJob.objects.filter(business=workshop, status='COMPLETED').count(),
-        'CLOSED': ServiceJob.objects.filter(business=workshop, status='CLOSED').count(),
-        'CANCELLED': ServiceJob.objects.filter(business=workshop, status='CANCELLED').count(),
-        'WTY': ServiceJob.objects.filter(business=workshop, is_warranty=True).count(),
-        'DUE': ServiceJob.objects.filter(business=workshop, is_warranty=False, payment_status='PENDING', status__in=['COMPLETED', 'CLOSED', 'PAYMENT_PENDING']).count(),
+        'all': base_counts_qs.count(),
+        'NEW': base_counts_qs.filter(status='NEW').count(),
+        'ASSIGNED': base_counts_qs.filter(status='ASSIGNED').count(),
+        'IN_PROGRESS': base_counts_qs.filter(status='IN_PROGRESS').count(),
+        'WAITING_FOR_PARTS': base_counts_qs.filter(status='WAITING_FOR_PARTS').count(),
+        'COMPLETED': base_counts_qs.filter(status='COMPLETED').count(),
+        'CLOSED': base_counts_qs.filter(status='CLOSED').count(),
+        'CANCELLED': base_counts_qs.filter(status='CANCELLED').count(),
+        'WTY': base_counts_qs.filter(is_warranty=True).count(),
+        'DUE': base_counts_qs.filter(is_warranty=False, payment_status='PENDING', status__in=['COMPLETED', 'CLOSED', 'PAYMENT_PENDING']).count(),
     }
 
     technicians = StaffProfile.objects.filter(business=workshop, role='TECHNICIAN').select_related('user')
@@ -309,6 +317,13 @@ def job_detail_view(request, pk):
         pk=pk
     )
     workshop = job.business
+
+    # Technician access control: technicians can only access jobs assigned to them
+    if hasattr(request.user, 'staff_profile') and request.user.staff_profile.is_technician:
+        if job.technician != request.user:
+            messages.error(request, "Access restricted: You can only view and service jobs assigned to you.")
+            return redirect('services:technician_view')
+
     work_logs = job.work_logs.select_related('technician').order_by('created_at')
     parts_used = job.parts_used.select_related('inventory_item', 'added_by').order_by('added_at')
 

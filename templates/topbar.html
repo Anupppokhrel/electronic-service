@@ -31,10 +31,17 @@
             <span>{{ active_jobs_count|default:"0" }} Active Job{{ active_jobs_count|pluralize }}</span>
         </a>
 
-        <!-- Quick Create Job Button -->
+        <!-- Quick Create Job Button (Admin Only) or Field Hub (Technician) -->
+        {% if not request.user.staff_profile.is_technician %}
         <a href="{% url 'services:job_create' %}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
             <i data-lucide="plus" class="w-4 h-4"></i>
             <span>New Service Job</span>
         </a>
+        {% else %}
+        <a href="{% url 'services:technician_view' %}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm shadow-emerald-600/30 transition-all hover:scale-[1.02] active:scale-[0.98]">
+            <i data-lucide="wrench" class="w-4 h-4"></i>
+            <span>My Field Hub</span>
+        </a>
+        {% endif %}
     </div>
 </header>

@@ -22,10 +22,17 @@ def workshop_context(request):
         if hasattr(request.user, 'staff_profile'):
             context['staff_profile'] = request.user.staff_profile
         if workshop:
-            context['active_jobs_count'] = ServiceJob.objects.filter(
-                business=workshop,
-                status='IN_PROGRESS'
-            ).count()
+            if hasattr(request.user, 'staff_profile') and request.user.staff_profile.is_technician:
+                context['active_jobs_count'] = ServiceJob.objects.filter(
+                    business=workshop,
+                    technician=request.user,
+                    status__in=['IN_PROGRESS', 'ASSIGNED', 'WAITING_FOR_PARTS']
+                ).count()
+            else:
+                context['active_jobs_count'] = ServiceJob.objects.filter(
+                    business=workshop,
+                    status='IN_PROGRESS'
+                ).count()
 
     return context
 

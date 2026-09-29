@@ -21,6 +21,8 @@ def login_view(request):
             messages.success(request, f"Welcome back, {user.get_full_name() or user.username}!")
             next_url = request.GET.get('next')
             if not next_url or next_url == '/':
+                if hasattr(user, 'staff_profile') and user.staff_profile.is_technician:
+                    return redirect('services:technician_view')
                 return redirect('core:dashboard')
             return redirect(next_url)
         else:

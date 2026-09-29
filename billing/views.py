@@ -15,7 +15,7 @@ from inventory.models import Brand
 from .models import Invoice, Payment, Dealer
 from services.models import ServiceJob
 
-@login_required
+@admin_required
 def invoice_list_view(request):
     workshop = Business.objects.first()
     search = request.GET.get('search', '').strip()
@@ -190,7 +190,7 @@ def credit_ledger_view(request):
     }
     return render(request, 'billing/credit_ledger.html', context)
 
-@login_required
+@admin_required
 def warranty_claims_view(request):
     """
     Dedicated Dealer Warranty Claims Hub (WTY).
@@ -266,7 +266,7 @@ def warranty_claims_view(request):
     }
     return render(request, 'billing/warranty_claims.html', context)
 
-@login_required
+@admin_required
 def warranty_claims_export_excel(request):
     workshop = Business.objects.first()
     dealer_id = request.GET.get('dealer', '')

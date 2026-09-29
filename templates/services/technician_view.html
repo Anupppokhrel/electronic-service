@@ -190,5 +190,35 @@
     </div>
     {% endif %}
 
+    <!-- 4. COMPLETED TODAY -->
+    {% if my_completed_today %}
+    <div class="space-y-3 pt-2">
+        <h2 class="text-sm font-bold uppercase tracking-wider text-emerald-900 flex items-center gap-1.5">
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+            <span>Completed Today ({{ my_completed_today.count }})</span>
+        </h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for job in my_completed_today %}
+            <div class="bg-white rounded-2xl border border-emerald-200/80 shadow-sm p-5 space-y-2 bg-emerald-50/20">
+                <div class="flex items-center justify-between">
+                    <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800">✓ COMPLETED</span>
+                    <span class="font-bold text-sm text-slate-900">{{ job.job_number }}</span>
+                </div>
+                <div>
+                    <h4 class="font-bold text-slate-900 text-sm">{{ job.customer.name }}</h4>
+                    <p class="text-xs text-slate-500">{{ job.ac_brand_name }} • {{ job.service_type }}</p>
+                </div>
+                <div class="pt-2 flex justify-between items-center text-xs">
+                    <span class="text-slate-500">Completed at {{ job.completion_time|date:"h:i A" }}</span>
+                    <a href="{% url 'services:job_detail' job.id %}" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-colors">
+                        View Job Card
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
 </div>
 {% endblock %}
