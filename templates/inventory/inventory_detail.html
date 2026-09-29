@@ -156,7 +156,7 @@
                             {{ workshop.currency_symbol|default:"Rs." }} {{ usage.subtotal|intcomma }}
                         </td>
                         <td class="px-3.5 py-2.5 text-slate-600">
-                            {{ usage.added_by.get_full_name|default:usage.added_by.username|default:"Technician" }}
+                            {% if usage.added_by %}{{ usage.added_by.get_full_name|default:usage.added_by.username }}{% else %}Technician{% endif %}
                         </td>
                         <td class="px-3.5 py-2.5 text-right text-slate-400">
                             {{ usage.added_at|date:"d M Y" }}
@@ -225,7 +225,7 @@
                             {% endif %}
                         </td>
                         <td class="px-3.5 py-2.5 text-slate-600">
-                            {{ txn.performed_by.get_full_name|default:txn.performed_by.username|default:"System" }}
+                            {% if txn.performed_by %}{{ txn.performed_by.get_full_name|default:txn.performed_by.username }}{% else %}System{% endif %}
                         </td>
                         <td class="px-3.5 py-2.5 text-slate-500 italic">
                             {{ txn.notes|default:"-" }}

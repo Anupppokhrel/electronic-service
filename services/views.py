@@ -125,7 +125,15 @@ def job_create_view(request):
 
         if not phone or not customer_name:
             messages.error(request, "Customer phone number and name are required.")
-            return render(request, 'services/job_form.html', {'brands': brands, 'technicians': technicians})
+            dealers = Dealer.objects.filter(business=workshop, is_active=True)
+            return render(request, 'services/job_form.html', {
+                'brands': brands,
+                'technicians': technicians,
+                'dealers': dealers,
+                'appliance_choices': ServiceJob.APPLIANCE_CHOICES,
+                'job_type_choices': ServiceJob.JOB_TYPE_CHOICES,
+                'customer_phone': phone,
+            })
 
         # 1. Customer resolution (Prevent duplicate records)
         default_addr = workshop.address if workshop else ""
